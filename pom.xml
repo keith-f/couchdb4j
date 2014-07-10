@@ -7,7 +7,7 @@ http://maven.apache.org/maven-v4_0_0.xsd">
     <groupId>couchdb4j</groupId>
     <artifactId>couchdb4j</artifactId>
     <name>CouchDB4J</name>
-    <version>0.3.0-i386-1</version>
+    <version>0.3.1-kf</version>
     <url>http://code.google.com/p/couchdb4j/</url>
 
     <build>
