@@ -64,7 +64,7 @@ public class ViewResults extends Document {
 	 */
 	public List<Document> getResults() {
 		JSONArray ar = getJSONObject().getJSONArray("rows");
-		List<Document> docs = new ArrayList<Document>(ar.size());
+		List<Document> docs = new ArrayList<>(ar.size());
 		for (int i=0 ; i< ar.size(); i++) {
 			log.info(ar.getString(i));
 			if (ar.get(i)!=null && !ar.getString(i).equals("null")) {

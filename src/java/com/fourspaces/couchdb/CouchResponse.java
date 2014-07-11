@@ -52,12 +52,13 @@ public class CouchResponse {
 	private String path;
 	private Header[] headers;
 	private int statusCode;
+  private String phrase;
 	private String methodName;
 	boolean ok = false;
 
 	private String error_id;
 	private String error_reason;
-	
+
 	/**
 	 * C-tor parses the method results to build the CouchResponse object.
 	 * First, it reads the body (hence the IOException) from the method
@@ -75,6 +76,7 @@ public class CouchResponse {
 		path = req.getURI().getPath();
 
 		statusCode = response.getStatusLine().getStatusCode();
+    phrase = response.getStatusLine().getReasonPhrase();
 		
 		boolean isGet = (req instanceof HttpGet);
 		
@@ -189,4 +191,20 @@ public class CouchResponse {
         public String getBody() {
             return body;
         }
+
+  public int getStatusCode() {
+    return statusCode;
+  }
+
+  public void setStatusCode(int statusCode) {
+    this.statusCode = statusCode;
+  }
+
+  public String getPhrase() {
+    return phrase;
+  }
+
+  public void setPhrase(String phrase) {
+    this.phrase = phrase;
+  }
 }
