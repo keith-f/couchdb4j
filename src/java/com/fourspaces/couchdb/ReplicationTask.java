@@ -154,7 +154,7 @@ public class ReplicationTask extends CouchTask {
 	}
 	
 	/**
-	 * @return The JSON object representing this replication task. Null is returned upon failure.
+	 * @return The JSON content representing this replication task. Null is returned upon failure.
 	 */
 	public JSONObject getCreateRequest() {
 		final JSONObject object = new JSONObject();

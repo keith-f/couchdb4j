@@ -60,7 +60,7 @@ public class CouchResponse {
 	private String error_reason;
 
 	/**
-	 * C-tor parses the method results to build the CouchResponse object.
+	 * C-tor parses the method results to build the CouchResponse content.
 	 * First, it reads the body (hence the IOException) from the method
 	 * Next, it checks the status codes to determine if the request was successful.
 	 * If there was an error, it parses the error codes.
@@ -116,14 +116,14 @@ public class CouchResponse {
 
 	@Override
 	/**
-	 * A better toString for this object... can be very verbose though.
+	 * A better toString for this content... can be very verbose though.
 	 */
 	public String toString() {
 		return "["+methodName+"] "+path+" ["+statusCode+"] "+" => "+body;
 	}
 	
 	/**
-	 * Retrieves the body of the request as a JSONArray object. (such as listing database names)
+	 * Retrieves the body of the request as a JSONArray content. (such as listing database names)
 	 * @return
 	 */
 	public JSONArray getBodyAsJSONArray() {

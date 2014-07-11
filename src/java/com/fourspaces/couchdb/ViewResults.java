@@ -26,7 +26,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * The results of a view request is just a specialized Document object.
+ * The results of a view request is just a specialized Document content.
  * You can use ViewResults to retrieve information about the results (such as the 
  * number of rows returned).
  * <p>
@@ -44,7 +44,7 @@ public class ViewResults extends Document {
 	private View calledView;
 
 	/**
-	 * Builds the ViewResults object from the given JSON object. (called only from Database.view())
+	 * Builds the ViewResults content from the given JSON content. (called only from Database.view())
 	 * This shouldn't be called by user code. 
 	 * @param calledView
 	 * @param obj

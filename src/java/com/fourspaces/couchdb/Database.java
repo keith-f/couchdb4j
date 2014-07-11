@@ -32,7 +32,7 @@ import org.apache.commons.logging.LogFactory;
 /**
  * This represents a particular database on the CouchDB server
  * <p>
- * Using this object, you can get/create/update/delete documents.
+ * Using this content, you can get/create/update/delete documents.
  * You can also call views (named and adhoc) to query the underlying database.
  *
  * @author mbreese
@@ -52,7 +52,7 @@ public class Database {
 
 
   /**
-   * C-tor only used by the Session object.  You'd never call this directly.
+   * C-tor only used by the Session content.  You'd never call this directly.
    *
    * @param json
    * @param session
@@ -77,7 +77,7 @@ public class Database {
   /**
    * The number of documents in the database <b>at the time that it was retrieved from the session</b>
    * This number probably isn't accurate after the initial load... so if you want an accurate
-   * assessment, call Session.getDatabase() again to reload a new database object.
+   * assessment, call Session.getDatabase() again to reload a new database content.
    *
    * @return
    */
@@ -202,7 +202,7 @@ public class Database {
   }
 
   /**
-   * Runs an ad-hoc view from an AdHocView object.  You probably won't use this much, unless
+   * Runs an ad-hoc view from an AdHocView content.  You probably won't use this much, unless
    * you want to add filtering to the view (reverse, startkey, etc...)
    *
    * @param view
@@ -239,7 +239,7 @@ public class Database {
    * <p>
    * Otherwise, a PUT is called.
    * <p>
-   * Either way, a new _id and _rev are retrieved and updated in the Document object
+   * Either way, a new _id and _rev are retrieved and updated in the Document content
    *
    * @param doc
    * @param docId

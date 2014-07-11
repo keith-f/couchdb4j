@@ -493,7 +493,7 @@ public class Session {
 
   /**
    * Method that actually performs the GET/PUT/POST/DELETE calls.
-   * Executes the given HttpMethod on the HttpClient object (one HttpClient per Session).
+   * Executes the given HttpMethod on the HttpClient content (one HttpClient per Session).
    * <p>
    * This returns a CouchResponse, which can be used to get the status of the call (isOk),
    * and any headers / body that was sent back.

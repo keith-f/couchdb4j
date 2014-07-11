@@ -21,8 +21,8 @@ package com.fourspaces.couchdb;
  * The view can be named or ad-hoc (see AdHocView). (Currently [14 Sept 2007] named view aren't working in the 
  * mainline CouchDB code... but this _should_ work.)
  *<p>
- * The View object exists mainly to apply filtering to the view.  Otherwise, views can be 
- * called directly from the database object by using their names (or given an ad-hoc query).
+ * The View content exists mainly to apply filtering to the view.  Otherwise, views can be
+ * called directly from the database content by using their names (or given an ad-hoc query).
  * 
  * @author mbreese
  *
