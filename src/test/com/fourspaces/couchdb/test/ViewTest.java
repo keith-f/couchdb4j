@@ -3,18 +3,12 @@ package com.fourspaces.couchdb.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import com.fourspaces.couchdb.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import com.fourspaces.couchdb.AdHocView;
-import com.fourspaces.couchdb.Database;
-import com.fourspaces.couchdb.Document;
-import com.fourspaces.couchdb.Session;
-import com.fourspaces.couchdb.View;
-import com.fourspaces.couchdb.ViewResults;
 
 public class ViewTest {
 
@@ -27,7 +21,7 @@ public class ViewTest {
     sess.createDatabase("foo");
     foo = sess.getDatabase("foo");
     Document d = new Document();
-    d.put("foo", "bar");
+    d.getContent().put("foo", "bar");
     foo.saveDocument(d);
     log.debug("known id:" + d.getId());
     log.debug(foo.getDocument(d.getId()));
@@ -39,12 +33,12 @@ public class ViewTest {
   }
 
   @After
-  public void removeTestDB() {
+  public void removeTestDB() throws SessionException {
     sess.deleteDatabase("foo");
   }
 
   @Test
-  public void adhoc() {
+  public void adhoc() throws DatabaseException {
     int all = foo.getAllDocuments().getResults().size();
     ViewResults results = foo.adhoc("function (doc) {emit(null, doc);}");
     assertNotNull(results);
@@ -60,7 +54,7 @@ public class ViewTest {
    * views.
    */
   @Test
-  public void adhoc_query_string() {
+  public void adhoc_query_string() throws DatabaseException {
 	  
 	  // Establish that all results are returned with our view
 	  int all = foo.getAllDocuments().getResults().size();
@@ -81,7 +75,7 @@ public class ViewTest {
   }	
 
   @Test
-  public void adhoc2() {
+  public void adhoc2() throws DatabaseException {
     int adhoc = foo.adhoc("function (doc){ if (doc.foo=='bar'){ emit(doc, doc)}}").getResults().size();
     assertEquals(1, adhoc);
   }
@@ -89,7 +83,7 @@ public class ViewTest {
   @Test
   public void addNamed() throws Exception {
     Document d = new Document();
-    d.put("foo", "bar");
+    d.getContent().put("foo", "bar");
 
     log.debug("Saving d");
     foo.saveDocument(d);

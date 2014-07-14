@@ -50,11 +50,12 @@ import org.apache.commons.lang.StringUtils;
  * @author mbreese
  * @author Keith Flanagan - refactoring.
  */
-@SuppressWarnings("unchecked")
 public class Document {
 //	Log log = LogFactory.getLog(Document.class);
 
-  public static final String REVISION_HISTORY_PROP = "_revisions";  // FIXME is this correct? '_revs' is used later on.
+//  public static final String REVISION_HISTORY_PROP = "_revisions";  // FIXME is this correct? '_revs' is used later on.
+  public static final String DOC_PROP__ID = "_id";
+  public static final String DOC_PROP__REV = "_rev";
 
 //	protected Database database;
 	protected JSONObject content;
@@ -97,14 +98,10 @@ public class Document {
 	 * @return
 	 */
 	public String getId() {
-	  if (StringUtils.isNotBlank(content.optString("_id"))) {
-	    return content.optString("_id");
-	  } else {	
-	    return content.optString("id");
-	  }
+    return content.optString(DOC_PROP__ID);
 	}
 	public void setId(String id)  {
-		content.put("_id", id);
+		content.put(DOC_PROP__ID, id);
 	}
 
 	/**
@@ -125,37 +122,38 @@ public class Document {
 	 * @return
 	 */
 	public String getRev()  {
-    if (StringUtils.isNotBlank(content.optString("_rev"))) {
-      return content.optString("_rev");
-    } else {
-      return content.optString("rev");  //FIXME ??
-    }
+    return content.optString(DOC_PROP__REV);
+//    if (StringUtils.isNotBlank(content.optString("_rev"))) {
+//      return content.optString("_rev");
+//    } else {
+//      return content.optString("rev");  //FIXME ??
+//    }
 	}
 	public void setRev(String rev)  {
-		content.put("_rev", rev);
+		content.put(DOC_PROP__REV, rev);
 	}
 	
-	/**
-	 * A list of the revision numbers that this document has.  If this hasn't been 
-	 * populated with a "full=true" query, then the database will be re-queried
-	 * @return
-	 */
-	public String[] getRevisions() throws DatabaseException {
-		String[] revs = null;
-		if (!content.has("_revs")) {       // FIXME which is it?? _revs or _revisions, as per REVISION_HISTORY_PROP??
-			populateRevisions();  // FIXME we shouldn't be calling the database here...
-		} 
-		//System.out.println(content);
-		JSONArray ar = content.getJSONObject(REVISION_HISTORY_PROP).getJSONArray("ids");
-		if (ar!=null) {
-			revs = new String[ar.size()];
-			for (int i=0 ; i< ar.size(); i++) {
-				revs[i]=ar.getString(i);
-			}
-		}
-		return revs;
-	}
-	
+//	/**
+//	 * A list of the revision numbers that this document has.  If this hasn't been
+//	 * populated with a "full=true" query, then the database will be re-queried
+//	 * @return
+//	 */
+//	public String[] getRevisions() throws DatabaseException {
+//		String[] revs = null;
+//		if (!content.has("_revs")) {       // FIXME which is it?? _revs or _revisions, as per REVISION_HISTORY_PROP??
+//			populateRevisions();  // FIXME we shouldn't be calling the database here...
+//		}
+//		//System.out.println(content);
+//		JSONArray ar = content.getJSONObject(REVISION_HISTORY_PROP).getJSONArray("ids");
+//		if (ar!=null) {
+//			revs = new String[ar.size()];
+//			for (int i=0 ; i< ar.size(); i++) {
+//				revs[i]=ar.getString(i);
+//			}
+//		}
+//		return revs;
+//	}
+//
 	/**
 	 * Get a named view that is stored in the document.
 	 * @param name

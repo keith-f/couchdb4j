@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.fourspaces.couchdb.SessionException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,32 +15,32 @@ import com.fourspaces.couchdb.Session;
 public class DatabaseTest {
 	Session sess = TestSession.getTestSession();
 	
-	@Before public void createTestDB() {
+	@Before public void createTestDB() throws SessionException {
 		sess.createDatabase("foo");
 	}
 	
-	@After public void removeTestDB() {
+	@After public void removeTestDB() throws SessionException {
 		sess.deleteDatabase("foo");
 	}
 	
-	@Test public void list() {
+	@Test public void list() throws SessionException {
 		assertTrue (sess.getDatabaseNames().size()>0);
 	}
 	
-	@Test public void add() {
+	@Test public void add() throws SessionException {
 		int old = sess.getDatabaseNames().size();
 		sess.createDatabase("foo2");
 		assertEquals(sess.getDatabaseNames().size(),old+1);
 		sess.deleteDatabase("foo2");
 	}
-	@Test public void delete() {
+	@Test public void delete() throws SessionException {
 		sess.createDatabase("foobar");
 		assertNotNull(sess.getDatabase("foobar"));
 		sess.deleteDatabase("foobar");
 		assertNull(sess.getDatabase("foobar"));
 	}
 
-	@Test public void dup() {
+	@Test public void dup() throws SessionException {
 		int old = sess.getDatabaseNames().size();
 		sess.createDatabase("foo2");
 		assertEquals(sess.getDatabaseNames().size(),old+1);

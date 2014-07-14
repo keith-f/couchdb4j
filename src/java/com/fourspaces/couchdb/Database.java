@@ -175,7 +175,7 @@ public class Database {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
     ViewResults results = new ViewResults(view, resp.getBodyAsJSONObject());
-    results.setDatabase(this);
+//    results.setDatabase(this);
     return results;
 
   }
@@ -227,7 +227,7 @@ public class Database {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
     ViewResults results = new ViewResults(view, resp.getBodyAsJSONObject());
-    results.setDatabase(this);
+//    results.setDatabase(this);
     return results;
   }
 
@@ -248,9 +248,9 @@ public class Database {
     CouchResponse resp;
     try {
       if (docId == null || docId.equals("")) {
-        resp = session.post(name, doc.getJSONObject().toString());
+        resp = session.post(name, doc.getContent().toString());
       } else {
-        resp = session.put(name + "/" + urlEncodePath(docId), doc.getJSONObject().toString());
+        resp = session.put(name + "/" + urlEncodePath(docId), doc.getContent().toString());
       }
     } catch (SessionException | IOException e) {
       throw new DatabaseException("Database operation failed", e);
@@ -267,7 +267,7 @@ public class Database {
     } catch (JSONException e) {
       throw new DatabaseException("Error reading JSON", e);
     }
-    doc.setDatabase(this);
+//    doc.setDatabase(this);
   }
 
   /**
@@ -304,7 +304,7 @@ public class Database {
         log.warn("returned bulk save array in incorrect order, saved documents do not have updated rev or ids");
         throw new DatabaseException("returned bulk save array in incorrect order, saved documents do not have updated rev or ids");
       }
-      documents[i].setDatabase(this);
+//      documents[i].setDatabase(this);
     }
   }
 
@@ -368,7 +368,7 @@ public class Database {
           + "; Error text: " + resp.getPhrase() + "; Reason: " + resp.getErrorReason());
     }
     Document doc = new Document(resp.getBodyAsJSONObject());
-    doc.setDatabase(this);
+//    doc.setDatabase(this);
     return doc;
   }
 
