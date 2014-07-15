@@ -16,41 +16,30 @@
 
 package com.fourspaces.couchdb;
 
-import java.io.IOException;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpHost;
+import org.apache.http.NameValuePair;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.AuthCache;
+import org.apache.http.client.AuthenticationStrategy;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.methods.*;
+import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.auth.BasicScheme;
+import org.apache.http.impl.client.*;
+import org.apache.http.message.BasicHeader;
+import org.apache.http.util.EntityUtils;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
-
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
-
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.PlainSocketFactory;
-import org.apache.http.conn.ssl.SSLSocketFactory;
-import org.apache.http.params.HttpParams;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.client.params.AllClientPNames;
-import org.apache.http.client.params.ClientPNames;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.message.BasicHeader;
 
 /**
  * The Session is the main connection to the CouchDB instance.  However, you'll only use the Session
@@ -65,25 +54,28 @@ import org.apache.http.message.BasicHeader;
  *
  * @author mbreese
  * @author brennanjubb - HTTP-Auth username/pass
- * @author Keith Flanagan - added exception handling
+ * @author Keith Flanagan - added exception handling, updated to httpcomponents-client-4.3.x, fixed authentication
  */
 public class Session {
   private static final String DEFAULT_CHARSET = "UTF-8";
 
   private static final String MIME_TYPE_JSON = "application/json";
 
-  protected Log log = LogFactory.getLog(Session.class);
+  private static final int SOCKET_TIMEOUT = 30 * 1000;
+  private static final int CONNECTION_TIMEOUT = 15 * 1000;
+
+  protected final Log log = LogFactory.getLog(Session.class);
   protected final String host;
   protected final int port;
   protected final String user;
   protected final String pass;
   protected final boolean secure;
-  protected final boolean usesAuth;
 
-  protected CouchResponse lastResponse;
+//  protected CouchResponse lastResponse;
 
-  protected HttpClient httpClient;
-  protected HttpParams httpParams;
+  private CredentialsProvider credsProvider;
+  private AuthCache authCache;
+  protected final CloseableHttpClient httpClient; //Docs: http://hc.apache.org/httpcomponents-client-4.3.x/
 
   /**
    * Constructor for obtaining a Session with an HTTP-AUTH username/password and (optionally) a secure connection
@@ -95,32 +87,32 @@ public class Session {
    * @param pass   - password
    * @param secure - use an SSL connection?
    */
-  public Session(String host, int port, String user, String pass, boolean usesAuth, boolean secure) {
+  public Session(String host, int port, String user, String pass, boolean secure) {
     this.host = host;
     this.port = port;
     this.user = user;
     this.pass = pass;
-    this.usesAuth = usesAuth;
     this.secure = secure;
 
-    httpParams = new BasicHttpParams();
-    SchemeRegistry schemeRegistry = new SchemeRegistry();
+    authCache = new BasicAuthCache();
+    authCache.put(new HttpHost(host, port), new BasicScheme());  //Host-specific credentials
+    credsProvider = new BasicCredentialsProvider();
 
-    schemeRegistry.register(new Scheme("http", PlainSocketFactory.getSocketFactory(), 80));
-    schemeRegistry.register(new Scheme("https", SSLSocketFactory.getSocketFactory(), 443));
-
-    ThreadSafeClientConnManager connManager = new ThreadSafeClientConnManager(httpParams, schemeRegistry);
-    DefaultHttpClient defaultClient = new DefaultHttpClient(connManager, httpParams);
     if (user != null) {
-      defaultClient.getCredentialsProvider().setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(user, pass));
+      log.info("Username: "+user+", pass: "+pass+", host: "+host+", port: "+port);
+      credsProvider.setCredentials(
+          new AuthScope(host, port),
+//          AuthScope.ANY,
+          new UsernamePasswordCredentials(user, pass));    // Default credentials
+
+      httpClient = HttpClients.custom()
+          .setDefaultCredentialsProvider(credsProvider)
+          // ... can set things like timeout / user agents here ...
+//          .setTargetAuthenticationStrategy(new TargetAuthenticationStrategy())
+          .build();
+    } else {
+      httpClient = HttpClients.createDefault();
     }
-
-    this.httpClient = defaultClient;
-
-    setUserAgent("couchdb4j");
-    setSocketTimeout((30 * 1000));
-    setConnectionTimeout((15 * 1000));
-
   }
 
   /**
@@ -133,7 +125,7 @@ public class Session {
    * @param pass - password
    */
   public Session(String host, int port, String user, String pass) {
-    this(host, port, user, pass, false, false);
+    this(host, port, user, pass, false);
   }
 
   /**
@@ -143,7 +135,7 @@ public class Session {
    * @param port
    */
   public Session(String host, int port) {
-    this(host, port, null, null, false, false);
+    this(host, port, null, null, false);
   }
 
   /**
@@ -155,7 +147,7 @@ public class Session {
    * @param secure
    */
   public Session(String host, int port, boolean secure) {
-    this(host, port, null, null, false, secure);
+    this(host, port, null, null, secure);
   }
 
   /**
@@ -213,10 +205,10 @@ public class Session {
       return new Database(resp.getBodyAsJSONObject(), this);
     } else {
       throw new SessionException("Error getting database: " + name
-          + " Error ID: " + resp.getErrorId()
+          + " Status code: " + resp.getStatusCode()
+          + ", Error ID: " + resp.getErrorId()
           + ", Error reason: " + resp.getErrorReason()
-          + ", Status code: " + resp.getStatusCode()
-          + ", Phase: " + resp.getPhrase()
+          + ", Phrase: " + resp.getPhrase()
       );
     }
   }
@@ -232,15 +224,16 @@ public class Session {
     if (!dbname.endsWith("/")) {
       dbname += "/";
     }
+    log.info("DB name: "+dbname);
     CouchResponse resp = put(dbname);
     if (resp.isOk()) {
       return getDatabase(dbname);
     } else {
       throw new SessionException("Error creating database: " + name
-          + " Error ID: " + resp.getErrorId()
+          + " Status code: " + resp.getStatusCode()
+          + ", Error ID: " + resp.getErrorId()
           + ", Error reason: " + resp.getErrorReason()
-          + ", Status code: " + resp.getStatusCode()
-          + ", Phase: " + resp.getPhrase()
+          + ", Phrase: " + resp.getPhrase()
       );
     }
   }
@@ -338,13 +331,11 @@ public class Session {
     HttpPost post = new HttpPost(buildUrl(url, queryString));
     if (content != null) {
       HttpEntity entity;
-      try {
         entity = new StringEntity(content, DEFAULT_CHARSET);
         post.setEntity(entity);
         post.setHeader(new BasicHeader("Content-Type", MIME_TYPE_JSON));
-      } catch (UnsupportedEncodingException e) {
-        throw new SessionException("Error occurred during a POST operation", e);
-      }
+//        throw new SessionException("Error occurred during a POST operation", e);
+
     }
 
 
@@ -365,15 +356,12 @@ public class Session {
     HttpPost post = new HttpPost(buildUrl(url, queryString));
     if (content != null) {
       HttpEntity entity;
-      try {
         entity = new StringEntity(content, DEFAULT_CHARSET);
         post.setEntity(entity);
         if (ctype != null) {
           post.setHeader(new BasicHeader("Content-Type", ctype));
         }
-      } catch (UnsupportedEncodingException e) {
-        throw new SessionException("Error occurred during a POST operation", e);
-      }
+
     }
 
     return http(post);
@@ -398,15 +386,15 @@ public class Session {
    */
   CouchResponse put(String url, String content) throws SessionException {
     HttpPut put = new HttpPut(buildUrl(url));
+    log.info("Orig URL: "+url);
+    log.info("Built URL: "+buildUrl(url));
+    log.info("Content: "+content);
     if (content != null) {
       HttpEntity entity;
-      try {
         entity = new StringEntity(content, DEFAULT_CHARSET);
         put.setEntity(entity);
         put.setHeader(new BasicHeader("Content-Type", MIME_TYPE_JSON));
-      } catch (UnsupportedEncodingException e) {
-        throw new SessionException("Error occurred during a PUT operation", e);
-      }
+
     }
     return http(put);
   }
@@ -418,13 +406,10 @@ public class Session {
     HttpPut put = new HttpPut(buildUrl(url));
     if (content != null) {
       HttpEntity entity;
-      try {
         entity = new StringEntity(content, DEFAULT_CHARSET);
         put.setEntity(entity);
         put.setHeader(new BasicHeader("Content-Type", ctype));
-      } catch (UnsupportedEncodingException e) {
-        throw new SessionException("Error occurred during a PUT operation", e);
-      }
+
     }
     return http(put);
   }
@@ -443,15 +428,12 @@ public class Session {
     HttpPut put = new HttpPut(buildUrl(url, queryString));
     if (content != null) {
       HttpEntity entity;
-      try {
         entity = new StringEntity(content, DEFAULT_CHARSET);
         put.setEntity(entity);
         if (ctype != null) {
           put.setHeader(new BasicHeader("Content-Type", ctype));
         }
-      } catch (UnsupportedEncodingException e) {
-        throw new SessionException("Error occurred during a PUT operation", e);
-      }
+
     }
     return http(put);
   }
@@ -502,30 +484,30 @@ public class Session {
    * @return the CouchResponse (status / error / json document)
    */
   protected CouchResponse http(HttpRequestBase req) throws SessionException {
+//    req.addHeader("Authorization", "Basic");
 
-    HttpResponse httpResponse;
-//		HttpEntity entity;
+//    if (credsProvider != null) {
+//      AuthCache authCache = new BasicAuthCache();
+//      authCache.put(new HttpHost(host, port), new BasicScheme());
 
-    try {
-      if (usesAuth) {
-        req.getParams().setBooleanParameter(ClientPNames.HANDLE_AUTHENTICATION, true);
-      }
-      httpResponse = httpClient.execute(req);
-//			entity = httpResponse.getEntity();
-      lastResponse = new CouchResponse(req, httpResponse);
-    } catch (IOException e) {
+// Add AuthCache to the execution context
+      final HttpClientContext context = HttpClientContext.create();
+      context.setCredentialsProvider(credsProvider);
+      context.setAuthCache(authCache);
+//    }
+
+//    log.info("Auth enabled: "+req.getConfig().isAuthenticationEnabled());
+    try (CloseableHttpResponse httpResponse = httpClient.execute(req, context)) {
+//      lastResponse = new CouchResponse(req, httpResponse);
+      CouchResponse currentResponse = new CouchResponse(req, httpResponse);
+//      lastResponse = currentResponse;
+
+      EntityUtils.consume(httpResponse.getEntity()); //Required to ensure connection is reusable
+      return currentResponse;
+    } catch (Exception e) {
       throw new SessionException("HTTP request failed", e);
     }
-//    finally {
-//			  if (entity != null) {
-//				try {
-//					entity.consumeContent();
-//				} catch (IOException e) {
-//					throw new RuntimeException(e);
-//				}
-//			}
-//		}
-    return lastResponse;
+
   }
 
   /**
@@ -534,21 +516,9 @@ public class Session {
    *
    * @return
    */
-  public CouchResponse getLastResponse() {
-    return lastResponse;
-  }
-
-  public void setUserAgent(String ua) {
-    httpParams.setParameter(AllClientPNames.USER_AGENT, ua);
-  }
-
-  public void setConnectionTimeout(int milliseconds) {
-    httpParams.setIntParameter(AllClientPNames.CONNECTION_TIMEOUT, milliseconds);
-  }
-
-  public void setSocketTimeout(int milliseconds) {
-    httpParams.setIntParameter(AllClientPNames.SO_TIMEOUT, milliseconds);
-  }
+//  public CouchResponse getLastResponse() {
+//    return lastResponse;
+//  }
 
   protected String encodeParameter(String paramValue) {
     try {
