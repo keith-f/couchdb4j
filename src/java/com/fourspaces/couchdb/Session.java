@@ -26,7 +26,6 @@ import org.apache.http.NameValuePair;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.AuthCache;
-import org.apache.http.client.AuthenticationStrategy;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.*;
 import org.apache.http.client.protocol.HttpClientContext;
@@ -52,11 +51,18 @@ import java.util.List;
  * Session session = new Session(host,port);
  * Database db = session.getDatabase("dbname");
  *
+ * Lifecycle notes:
+ * <ul>
+ *   <li>Create a Session for each database server you wish to interact with</li>
+ *   <li>Perform a number of database operations</li>
+ *   <li>Remember to <code>close</code> the session, which ensures that the underlying HTTP client frees up resources.</li>
+ * </ul>
+ *
  * @author mbreese
  * @author brennanjubb - HTTP-Auth username/pass
  * @author Keith Flanagan - added exception handling, updated to httpcomponents-client-4.3.x, fixed authentication
  */
-public class Session {
+public class Session implements AutoCloseable {
   private static final String DEFAULT_CHARSET = "UTF-8";
 
   private static final String MIME_TYPE_JSON = "application/json";
@@ -69,46 +75,42 @@ public class Session {
   protected final int port;
   protected final String user;
   protected final String pass;
-  protected final boolean secure;
+  protected final boolean useHttps;
 
-//  protected CouchResponse lastResponse;
-
-  private CredentialsProvider credsProvider;
-  private AuthCache authCache;
-  protected final CloseableHttpClient httpClient; //Docs: http://hc.apache.org/httpcomponents-client-4.3.x/
+  private final CredentialsProvider credsProvider;
+  private final AuthCache authCache;
+  private final CloseableHttpClient httpClient; //Docs: http://hc.apache.org/httpcomponents-client-4.3.x/
 
   /**
-   * Constructor for obtaining a Session with an HTTP-AUTH username/password and (optionally) a secure connection
+   * Constructor for obtaining a Session with an HTTP-AUTH username/password and (optionally) a useHttps connection
    * This isn't supported by CouchDB - you need a proxy in front to use this
    *
    * @param host   - hostname
    * @param port   - port to use
    * @param user   - username
    * @param pass   - password
-   * @param secure - use an SSL connection?
+   * @param useHttps - use an SSL connection?
    */
-  public Session(String host, int port, String user, String pass, boolean secure) {
+  public Session(String host, int port, String user, String pass, boolean useHttps) {
     this.host = host;
     this.port = port;
     this.user = user;
     this.pass = pass;
-    this.secure = secure;
+    this.useHttps = useHttps;
 
     authCache = new BasicAuthCache();
     authCache.put(new HttpHost(host, port), new BasicScheme());  //Host-specific credentials
     credsProvider = new BasicCredentialsProvider();
 
     if (user != null) {
-      log.info("Username: "+user+", pass: "+pass+", host: "+host+", port: "+port);
+      log.info("Username: " + user + ", host: " + host + ", port: " + port);
       credsProvider.setCredentials(
           new AuthScope(host, port),
-//          AuthScope.ANY,
           new UsernamePasswordCredentials(user, pass));    // Default credentials
 
       httpClient = HttpClients.custom()
           .setDefaultCredentialsProvider(credsProvider)
-          // ... can set things like timeout / user agents here ...
-//          .setTargetAuthenticationStrategy(new TargetAuthenticationStrategy())
+          // ... can set things like timeout / user agents here if required ...
           .build();
     } else {
       httpClient = HttpClients.createDefault();
@@ -144,10 +146,10 @@ public class Session {
    *
    * @param host
    * @param port
-   * @param secure
+   * @param useHttps
    */
-  public Session(String host, int port, boolean secure) {
-    this(host, port, null, null, secure);
+  public Session(String host, int port, boolean useHttps) {
+    this(host, port, null, null, useHttps);
   }
 
   /**
@@ -168,14 +170,253 @@ public class Session {
     return port;
   }
 
+
   /**
-   * Is this a secured connection (set in constructor)
+   * For a given url (such as /_all_dbs/), build the database connection url
    *
+   * @param url
+   * @return the absolute URL (hostname/port/etc)
+   */
+  protected String buildUrl(String url) {
+    return ((useHttps) ? "https" : "http") + "://" + host + ":" + port + "/" + url;
+  }
+
+  protected String buildUrl(String url, String queryString) {
+    return (queryString != null) ? buildUrl(url) + "?" + queryString : buildUrl(url);
+  }
+
+  protected String buildUrl(String url, NameValuePair[] params) {
+    url = ((useHttps) ? "https" : "http") + "://" + host + ":" + port + "/" + url;
+    if (params.length > 0) {
+      url += "?";
+    }
+    for (NameValuePair param : params) {
+      url += param.getName() + "=" + param.getValue();
+    }
+    return url;
+  }
+
+  /**
+   * Package level access to send a DELETE request to the given URL
+   *
+   * @param url
    * @return
    */
-  public boolean isSecure() {
-    return secure;
+  public CouchResponse delete(String url) throws SessionException {
+    HttpDelete del = new HttpDelete(buildUrl(url));
+    return http(del);
   }
+
+  /**
+   * Send a POST with no body / parameters
+   *
+   * @param url
+   * @return
+   */
+  public CouchResponse post(String url) throws SessionException {
+    return post(url, null, null);
+  }
+
+  /**
+   * Send a POST with body
+   *
+   * @param url
+   * @param content
+   * @return
+   */
+  public CouchResponse post(String url, String content) throws SessionException {
+    return post(url, content, null);
+  }
+
+  /**
+   * Send a POST with a body and query string
+   *
+   * @param url
+   * @param content
+   * @param queryString
+   * @return
+   */
+  public CouchResponse post(String url, String content, String queryString) throws SessionException {
+    HttpPost post = new HttpPost(buildUrl(url, queryString));
+    if (content != null) {
+      HttpEntity entity;
+      entity = new StringEntity(content, DEFAULT_CHARSET);
+      post.setEntity(entity);
+      post.setHeader(new BasicHeader("Content-Type", MIME_TYPE_JSON));
+    }
+    return http(post);
+  }
+
+  /**
+   * Send a POST with a body, query string and specified content type
+   *
+   * @param url
+   * @param ctype
+   * @param content
+   * @param queryString
+   * @return
+   * @author rwilson
+   */
+  public CouchResponse post(String url, String ctype, String content, String queryString) throws SessionException {
+    HttpPost post = new HttpPost(buildUrl(url, queryString));
+    if (content != null) {
+      HttpEntity entity;
+      entity = new StringEntity(content, DEFAULT_CHARSET);
+      post.setEntity(entity);
+      if (ctype != null) {
+        post.setHeader(new BasicHeader("Content-Type", ctype));
+      }
+
+    }
+
+    return http(post);
+  }
+
+  /**
+   * Send a PUT  (for creating databases)
+   *
+   * @param url
+   * @return
+   */
+  public CouchResponse put(String url) throws SessionException {
+    return put(url, null);
+  }
+
+  /**
+   * Send a PUT with a body (for creating documents)
+   *
+   * @param url
+   * @param content
+   * @return
+   */
+  public CouchResponse put(String url, String content) throws SessionException {
+    HttpPut put = new HttpPut(buildUrl(url));
+//    log.info("Orig URL: " + url);
+//    log.info("Built URL: " + buildUrl(url));
+//    log.info("Content: " + content);
+    if (content != null) {
+      HttpEntity entity;
+      entity = new StringEntity(content, DEFAULT_CHARSET);
+      put.setEntity(entity);
+      put.setHeader(new BasicHeader("Content-Type", MIME_TYPE_JSON));
+
+    }
+    return http(put);
+  }
+
+  /**
+   * Overloaded Put using by attachments
+   */
+  public CouchResponse put(String url, String ctype, String content) throws SessionException {
+    HttpPut put = new HttpPut(buildUrl(url));
+    if (content != null) {
+      HttpEntity entity;
+      entity = new StringEntity(content, DEFAULT_CHARSET);
+      put.setEntity(entity);
+      put.setHeader(new BasicHeader("Content-Type", ctype));
+
+    }
+    return http(put);
+  }
+
+  /**
+   * Overloaded Put using by attachments and query string
+   *
+   * @param url
+   * @param ctype
+   * @param content
+   * @param queryString
+   * @return
+   * @author rwilson
+   */
+  public CouchResponse put(String url, String ctype, String content, String queryString) throws SessionException {
+    HttpPut put = new HttpPut(buildUrl(url, queryString));
+    if (content != null) {
+      HttpEntity entity;
+      entity = new StringEntity(content, DEFAULT_CHARSET);
+      put.setEntity(entity);
+      if (ctype != null) {
+        put.setHeader(new BasicHeader("Content-Type", ctype));
+      }
+
+    }
+    return http(put);
+  }
+
+  /**
+   * Send a GET request
+   *
+   * @param url
+   * @return
+   */
+  public CouchResponse get(String url) throws SessionException {
+    HttpGet get = new HttpGet(buildUrl(url));
+    return http(get);
+  }
+
+  /**
+   * Send a GET request with a number of name/value pairs as a query string
+   *
+   * @param url
+   * @param queryParams
+   * @return
+   */
+  public CouchResponse get(String url, NameValuePair[] queryParams) throws SessionException {
+    HttpGet get = new HttpGet(buildUrl(url, queryParams));
+    return http(get);
+  }
+
+  /**
+   * Send a GET request with a queryString (?foo=bar)
+   *
+   * @param url
+   * @param queryString
+   * @return
+   */
+  public CouchResponse get(String url, String queryString) throws SessionException {
+    HttpGet get = new HttpGet(buildUrl(url, queryString));
+    return http(get);
+  }
+
+  /**
+   * Method that actually performs the GET/PUT/POST/DELETE calls.
+   * Executes the given HttpMethod on the HttpClient content (one HttpClient per Session).
+   * <p>
+   * This returns a CouchResponse, which can be used to get the status of the call (isOk),
+   * and any headers / body that was sent back.
+   *
+   * @param req
+   * @return the CouchResponse (status / error / json document)
+   */
+  private CouchResponse http(HttpRequestBase req) throws SessionException {
+    // Add AuthCache to the execution context
+    final HttpClientContext context = HttpClientContext.create();
+    context.setCredentialsProvider(credsProvider);
+    context.setAuthCache(authCache);
+    try (CloseableHttpResponse httpResponse = httpClient.execute(req, context)) {
+      CouchResponse currentResponse = new CouchResponse(req, httpResponse);
+
+      EntityUtils.consume(httpResponse.getEntity()); //Required to ensure connection is reusable
+      return currentResponse;
+    } catch (Exception e) {
+      throw new SessionException("HTTP request failed", e);
+    }
+
+  }
+
+  private String encodeParameter(String paramValue) {
+    try {
+      return URLEncoder.encode(paramValue, DEFAULT_CHARSET);
+    } catch (UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public void close() throws Exception {
+    httpClient.close();
+  }
+
 
   /**
    * Retrieves a list of all database names from the server
@@ -224,7 +465,6 @@ public class Session {
     if (!dbname.endsWith("/")) {
       dbname += "/";
     }
-    log.info("DB name: "+dbname);
     CouchResponse resp = put(dbname);
     if (resp.isOk()) {
       return getDatabase(dbname);
@@ -258,275 +498,6 @@ public class Session {
     return deleteDatabase(db.getName());
   }
 
-  /**
-   * For a given url (such as /_all_dbs/), build the database connection url
-   *
-   * @param url
-   * @return the absolute URL (hostname/port/etc)
-   */
-  protected String buildUrl(String url) {
-    return ((secure) ? "https" : "http") + "://" + host + ":" + port + "/" + url;
-  }
-
-  protected String buildUrl(String url, String queryString) {
-    return (queryString != null) ? buildUrl(url) + "?" + queryString : buildUrl(url);
-  }
-
-  protected String buildUrl(String url, NameValuePair[] params) {
-
-    url = ((secure) ? "https" : "http") + "://" + host + ":" + port + "/" + url;
-
-    if (params.length > 0) {
-      url += "?";
-    }
-    for (NameValuePair param : params) {
-      url += param.getName() + "=" + param.getValue();
-    }
-
-    return url;
-
-  }
-
-  /**
-   * Package level access to send a DELETE request to the given URL
-   *
-   * @param url
-   * @return
-   */
-  CouchResponse delete(String url) throws SessionException {
-    HttpDelete del = new HttpDelete(buildUrl(url));
-    return http(del);
-  }
-
-  /**
-   * Send a POST with no body / parameters
-   *
-   * @param url
-   * @return
-   */
-  CouchResponse post(String url) throws SessionException {
-    return post(url, null, null);
-  }
-
-  /**
-   * Send a POST with body
-   *
-   * @param url
-   * @param content
-   * @return
-   */
-  CouchResponse post(String url, String content) throws SessionException {
-    return post(url, content, null);
-  }
-
-  /**
-   * Send a POST with a body and query string
-   *
-   * @param url
-   * @param content
-   * @param queryString
-   * @return
-   */
-  CouchResponse post(String url, String content, String queryString) throws SessionException {
-    HttpPost post = new HttpPost(buildUrl(url, queryString));
-    if (content != null) {
-      HttpEntity entity;
-        entity = new StringEntity(content, DEFAULT_CHARSET);
-        post.setEntity(entity);
-        post.setHeader(new BasicHeader("Content-Type", MIME_TYPE_JSON));
-//        throw new SessionException("Error occurred during a POST operation", e);
-
-    }
-
-
-    return http(post);
-  }
-
-  /**
-   * Send a POST with a body, query string and specified content type
-   *
-   * @param url
-   * @param ctype
-   * @param content
-   * @param queryString
-   * @return
-   * @author rwilson
-   */
-  CouchResponse post(String url, String ctype, String content, String queryString) throws SessionException {
-    HttpPost post = new HttpPost(buildUrl(url, queryString));
-    if (content != null) {
-      HttpEntity entity;
-        entity = new StringEntity(content, DEFAULT_CHARSET);
-        post.setEntity(entity);
-        if (ctype != null) {
-          post.setHeader(new BasicHeader("Content-Type", ctype));
-        }
-
-    }
-
-    return http(post);
-  }
-
-  /**
-   * Send a PUT  (for creating databases)
-   *
-   * @param url
-   * @return
-   */
-  CouchResponse put(String url) throws SessionException {
-    return put(url, null);
-  }
-
-  /**
-   * Send a PUT with a body (for creating documents)
-   *
-   * @param url
-   * @param content
-   * @return
-   */
-  CouchResponse put(String url, String content) throws SessionException {
-    HttpPut put = new HttpPut(buildUrl(url));
-    log.info("Orig URL: "+url);
-    log.info("Built URL: "+buildUrl(url));
-    log.info("Content: "+content);
-    if (content != null) {
-      HttpEntity entity;
-        entity = new StringEntity(content, DEFAULT_CHARSET);
-        put.setEntity(entity);
-        put.setHeader(new BasicHeader("Content-Type", MIME_TYPE_JSON));
-
-    }
-    return http(put);
-  }
-
-  /**
-   * Overloaded Put using by attachments
-   */
-  CouchResponse put(String url, String ctype, String content) throws SessionException {
-    HttpPut put = new HttpPut(buildUrl(url));
-    if (content != null) {
-      HttpEntity entity;
-        entity = new StringEntity(content, DEFAULT_CHARSET);
-        put.setEntity(entity);
-        put.setHeader(new BasicHeader("Content-Type", ctype));
-
-    }
-    return http(put);
-  }
-
-  /**
-   * Overloaded Put using by attachments and query string
-   *
-   * @param url
-   * @param ctype
-   * @param content
-   * @param queryString
-   * @return
-   * @author rwilson
-   */
-  CouchResponse put(String url, String ctype, String content, String queryString) throws SessionException {
-    HttpPut put = new HttpPut(buildUrl(url, queryString));
-    if (content != null) {
-      HttpEntity entity;
-        entity = new StringEntity(content, DEFAULT_CHARSET);
-        put.setEntity(entity);
-        if (ctype != null) {
-          put.setHeader(new BasicHeader("Content-Type", ctype));
-        }
-
-    }
-    return http(put);
-  }
-
-  /**
-   * Send a GET request
-   *
-   * @param url
-   * @return
-   */
-  CouchResponse get(String url) throws SessionException {
-    HttpGet get = new HttpGet(buildUrl(url));
-    return http(get);
-  }
-
-  /**
-   * Send a GET request with a number of name/value pairs as a query string
-   *
-   * @param url
-   * @param queryParams
-   * @return
-   */
-  CouchResponse get(String url, NameValuePair[] queryParams) throws SessionException {
-    HttpGet get = new HttpGet(buildUrl(url, queryParams));
-    return http(get);
-  }
-
-  /**
-   * Send a GET request with a queryString (?foo=bar)
-   *
-   * @param url
-   * @param queryString
-   * @return
-   */
-  CouchResponse get(String url, String queryString) throws SessionException {
-    HttpGet get = new HttpGet(buildUrl(url, queryString));
-    return http(get);
-  }
-
-  /**
-   * Method that actually performs the GET/PUT/POST/DELETE calls.
-   * Executes the given HttpMethod on the HttpClient content (one HttpClient per Session).
-   * <p>
-   * This returns a CouchResponse, which can be used to get the status of the call (isOk),
-   * and any headers / body that was sent back.
-   *
-   * @param req
-   * @return the CouchResponse (status / error / json document)
-   */
-  protected CouchResponse http(HttpRequestBase req) throws SessionException {
-//    req.addHeader("Authorization", "Basic");
-
-//    if (credsProvider != null) {
-//      AuthCache authCache = new BasicAuthCache();
-//      authCache.put(new HttpHost(host, port), new BasicScheme());
-
-// Add AuthCache to the execution context
-      final HttpClientContext context = HttpClientContext.create();
-      context.setCredentialsProvider(credsProvider);
-      context.setAuthCache(authCache);
-//    }
-
-//    log.info("Auth enabled: "+req.getConfig().isAuthenticationEnabled());
-    try (CloseableHttpResponse httpResponse = httpClient.execute(req, context)) {
-//      lastResponse = new CouchResponse(req, httpResponse);
-      CouchResponse currentResponse = new CouchResponse(req, httpResponse);
-//      lastResponse = currentResponse;
-
-      EntityUtils.consume(httpResponse.getEntity()); //Required to ensure connection is reusable
-      return currentResponse;
-    } catch (Exception e) {
-      throw new SessionException("HTTP request failed", e);
-    }
-
-  }
-
-  /**
-   * Returns the last response for this given session
-   * - useful for debugging purposes
-   *
-   * @return
-   */
-//  public CouchResponse getLastResponse() {
-//    return lastResponse;
-//  }
-
-  protected String encodeParameter(String paramValue) {
-    try {
-      return URLEncoder.encode(paramValue, DEFAULT_CHARSET);
-    } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException(e);
-    }
-  }
 
   /**
    * This method will retrieve a list of replication tasks that are currently running under the couch server this

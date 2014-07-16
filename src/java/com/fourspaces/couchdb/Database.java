@@ -39,7 +39,7 @@ import org.apache.commons.logging.LogFactory;
  * @author Keith Flanagan - added exception handling
  */
 public class Database {
-  Log log = LogFactory.getLog(Database.class);
+  private static final Log log = LogFactory.getLog(Database.class);
   private final String name;
   private int documentCount;
   private int updateSeq;
@@ -89,7 +89,6 @@ public class Database {
    * The update seq from the initial database load.  The update sequence is the 'revision id' of an entire database. Useful for getting all documents in a database since a certain revision
    *
    * @return
-   * @see getAllDocuments()
    */
   public int getUpdateSeq() {
     return updateSeq;
