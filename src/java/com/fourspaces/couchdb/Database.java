@@ -260,9 +260,9 @@ public class Database {
 
     try {
       if (doc.getId() == null || doc.getId().equals("")) {
-        doc.setId(resp.getBodyAsJSONObject().getString("id"));
+        doc.setId(resp.getBodyAsJSONObject().getString("id"));   // FIXME is this correct? or _id?
       }
-      doc.setRev(resp.getBodyAsJSONObject().getString("rev"));
+      doc.setRev(resp.getBodyAsJSONObject().getString("rev"));   // FIXME is this correct? or _rev?
     } catch (JSONException e) {
       throw new DatabaseException("Error reading JSON", e);
     }
