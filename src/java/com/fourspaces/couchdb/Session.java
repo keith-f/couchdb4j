@@ -478,6 +478,14 @@ public class Session implements AutoCloseable {
     }
   }
 
+  public Database createDatabaseIfNotExists(String name) throws SessionException {
+    try {
+      return getDatabase(name);
+    } catch (Exception e) {
+      return createDatabase(name);
+    }
+  }
+
   /**
    * Deletes a database (by name) from the CouchDB server.
    *

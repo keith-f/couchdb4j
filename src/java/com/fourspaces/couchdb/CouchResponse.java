@@ -75,14 +75,17 @@ public class CouchResponse {
 
     log.info("Status code: " + statusCode);
     String statusCodeStr = String.valueOf(statusCode);
+    log.info("Body: "+body);
     if (statusCodeStr.startsWith("2")) {
-      if (path.endsWith("_bulk_docs")) { // Handle bulk doc update differently
-        ok = JSONArray.fromObject(body).size() > 0;
-      } else {
-        ok = JSONObject.fromObject(body).getBoolean("ok");
-      }
+      ok = true;
+//      if (path.endsWith("_bulk_docs")) { // Handle bulk doc update differently
+//        ok = JSONArray.fromObject(body).size() > 0;
+//      } else {
+//        ok = JSONObject.fromObject(body).getBoolean("ok");
+//      }
     } else {
       // Assume error
+      ok = false;
       JSONObject jbody = JSONObject.fromObject(body);
       errorId = jbody.getString("error");
       errorReason = jbody.getString("reason");
