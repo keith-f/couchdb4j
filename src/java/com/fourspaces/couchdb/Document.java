@@ -27,7 +27,7 @@ import org.apache.commons.lang.StringUtils;
 /**
  * Everything in CouchDB is a Document.  In this case, the document is an content backed by a
  * JSONObject.  The Document is also aware of the database that it is connected to.  This allows
- * the Document to reload it's properties when needed.  The only special fields are "_id", "_rev", 
+ * the Document to reload it's properties when needed.  The only special fields are "_id", "_rev",
  * "_revisions", and "_view_*".
  * <p>
  * All document have an _id and a _rev.  If this is a new document those fields are populated when
@@ -46,93 +46,98 @@ import org.apache.commons.lang.StringUtils;
  * <p>
  * If you got this Document from a view, you are likely missing elements.  To load them you can call
  * document.load().
- * 
+ *
  * @author mbreese
  * @author Keith Flanagan - refactoring.
  */
 public class Document {
 //	Log log = LogFactory.getLog(Document.class);
 
-//  public static final String REVISION_HISTORY_PROP = "_revisions";  // FIXME is this correct? '_revs' is used later on.
+  //  public static final String REVISION_HISTORY_PROP = "_revisions";  // FIXME is this correct? '_revs' is used later on.
   public static final String DOC_PROP__ID = "_id";
   public static final String DOC_PROP__REV = "_rev";
 
-//	protected Database database;
-	protected JSONObject content;
-	
+  //	protected Database database;
+  protected JSONObject content;
+
 //	boolean loaded = false;
-	
-	/**
-	 * Create a new Document
-	 *
-	 */
-	public Document () {
-		this.content = new JSONObject();
-	}
-	/**
-	 * Create a new Document from a JSONObject
-	 * @param obj
-	 */
-	public Document (JSONObject obj) {
-		this.content = obj;
-//		loaded=true;
-	}
 
   /**
-	 * Load data into this document from a differing JSONObject 
-	 * <p>
-	 * This is mainly for reloading data for an content that was retrieved from a view.  This version
-	 * doesn't overwrite any unsaved data that is currently present in this content.
-	 * 
-	 * @param object2
-	 */	
+   * Create a new Document
+   */
+  public Document() {
+    this.content = new JSONObject();
+  }
+
+  /**
+   * Create a new Document from a JSONObject
+   *
+   * @param obj
+   */
+  public Document(JSONObject obj) {
+    this.content = obj;
+//		loaded=true;
+  }
+
+  /**
+   * Load data into this document from a differing JSONObject
+   * <p>
+   * This is mainly for reloading data for an content that was retrieved from a view.  This version
+   * doesn't overwrite any unsaved data that is currently present in this content.
+   *
+   * @param object2
+   */
 //	protected void load(JSONObject object2) {
 //		if (!loaded) {
 //			content.putAll(object2);
 //			loaded=true;
 //		}
 //	}
-	
-	/**
-	 * This document's id (if saved)
-	 * @return
-	 */
-	public String getId() {
+
+  /**
+   * This document's id (if saved)
+   *
+   * @return
+   */
+  public String getId() {
     return content.optString(DOC_PROP__ID);
-	}
-	public void setId(String id)  {
-		content.put(DOC_PROP__ID, id);
-	}
+  }
 
-	/**
-	 * This strips _design from the document id
-	 */
-	public String getViewDocumentId() {
-		String id = getId();
-		int pos = id.lastIndexOf("/");
-		if (pos == -1) {
-			return id;
-		} else {
-			return id.substring(pos+1);
-		}
-	}
+  public void setId(String id) {
+    content.put(DOC_PROP__ID, id);
+  }
 
-	/**
-	 * This document's Revision (if saved)
-	 * @return
-	 */
-	public String getRev()  {
+  /**
+   * This strips _design from the document id
+   */
+  public String getViewDocumentId() {
+    String id = getId();
+    int pos = id.lastIndexOf("/");
+    if (pos == -1) {
+      return id;
+    } else {
+      return id.substring(pos + 1);
+    }
+  }
+
+  /**
+   * This document's Revision (if saved)
+   *
+   * @return
+   */
+  public String getRev() {
     return content.optString(DOC_PROP__REV);
 //    if (StringUtils.isNotBlank(content.optString("_rev"))) {
 //      return content.optString("_rev");
 //    } else {
 //      return content.optString("rev");  //FIXME ??
 //    }
-	}
-	public void setRev(String rev)  {
-		content.put(DOC_PROP__REV, rev);
-	}
-	
+  }
+
+  public void setRev(String rev) {
+    content.put(DOC_PROP__REV, rev);
+  }
+
 //	/**
 //	 * A list of the revision numbers that this document has.  If this hasn't been
 //	 * populated with a "full=true" query, then the database will be re-queried
@@ -154,65 +159,57 @@ public class Document {
 //		return revs;
 //	}
 //
-	/**
-	 * Get a named view that is stored in the document.
-	 * @param name
-	 * @return
-	 */
-	public View getView(String name) {
-		if (content.has("views")) {
-			JSONObject views = content.getJSONObject("views");
-			if (views.has(name)) {
-				return new View(this,name);
-			}
-		}
-		return null;
+
+  /**
+   * Get a named view that is stored in the document.
+   *
+   * @param name
+   * @return
+   */
+  public View getView(String name) {
+
+    if (content.has("views")) {
+      JSONObject views = content.getJSONObject("views");
+      if (views.has(name)) {
+        return new View(this, name);
+      }
     }
-	
-	/**
-	 * Add a view to this document.  If a view function already exists with the given viewName
-	 * it is overwritten.
-	 * <p>
-	 * This isn't persisted until the document is saved.
-	 * 
-	 * @param designDoc document name
-	 * @param viewName
-	 * @param function
-	 * @return
-	 */
-	public View addView(String designDoc, String viewName, String function) {
-		content.put("_id", "_design/" + designDoc); //Not sure if _id or id should be used
-		content.put("language", "javascript"); //FIXME specify language
+    return null;
+  }
+
+  public void addView(String viewName, String mapFunction, String reduceFunction) {
+    content.put("language", "javascript"); //FIXME specify language
 
     JSONObject funcs = new JSONObject();
-//    System.err.println("JSON String: " + JSONUtils.stringSerializedFunction(function));
-//    funcs.put("map", JSONUtils.stringSerializedFunction(function));
-    funcs.accumulate("map", JSONUtils.stringSerializedFunction(function));
+    funcs.accumulate("map", JSONUtils.stringSerializedFunction(mapFunction));
+    funcs.accumulate("reduce", JSONUtils.stringSerializedFunction(reduceFunction));
 
-    System.err.println("FUNCS: " + funcs.toString());
+    final JSONObject viewMap;
+    if (content.containsKey("views")) {
+      viewMap = content.getJSONObject("views");
+    } else {
+      viewMap = new JSONObject();
+    }
 
-		JSONObject viewMap = new JSONObject();
-		viewMap.put(viewName, funcs);
+    viewMap.put(viewName, funcs);
 
-		content.put("views", viewMap);
+    content.put("views", viewMap);
+  }
 
-		return new View(this, viewName, function);
+  /**
+   * Adds an update handler to the document and sets the document ID to that of a design
+   * document. If the function name key already exists within the "updates" element it will
+   * be overwritten. The document must be saved for the change to persist.
+   *
+   * @param designDoc
+   * @param functionName
+   * @param function
+   * @author rwilson
+   */
+  public void addUpdateHandler(String designDoc, String functionName, String function) {
+    content.put("_id", "_design/" + designDoc);
 
-	}
-	
-	/**
-	 * Adds an update handler to the document and sets the document ID to that of a design 
-	 * document. If the function name key already exists within the "updates" element it will 
-	 * be overwritten. The document must be saved for the change to persist. 
-	 * @author rwilson
-	 * @param designDoc
-	 * @param functionName
-	 * @param function
-	 */
-	public void addUpdateHandler(String designDoc, String functionName, String function) {
-	  content.put("_id", "_design/" + designDoc);
-    
-	  if (content.has("updates")) {
+    if (content.has("updates")) {
       JSONObject updates = content.getJSONObject("updates");
       updates.put(functionName, JSONUtils.stringSerializedFunction(function));
     } else {
@@ -220,37 +217,39 @@ public class Document {
       func.put(functionName, JSONUtils.stringSerializedFunction(function));
       content.put("updates", func);
     }
-	}
-	
-	/**
-	 * Adds an update handler to the document. The ID of the document is not modified. If the function 
-	 * name key already exists within the "updates" element it will be overwritten. The document 
-	 * must be saved for the change to persist.
-	 * @author rwilson
-	 * @param functionName
-	 * @param function
-	 * @return
-	 */
-	public void addUpdateHandler(String functionName, String function) {
-	  if (content.has("updates")) {
-	    JSONObject updates = content.getJSONObject("updates");
-	    updates.put(functionName, JSONUtils.stringSerializedFunction(function));
-	  } else {
-	    JSONObject func = new JSONObject();
-	    func.put(functionName, JSONUtils.stringSerializedFunction(function));
-	    content.put("updates", func);
-	  }
-	}	
-	
-	/**
-	 * Removes a view from this document.
-	 * <p>
-	 * This isn't persisted until the document is saved.
-	 * @param viewName
-	 */
-	public void deleteView(String viewName) {
-		content.remove("_design/" + viewName);
-	}
+  }
+
+  /**
+   * Adds an update handler to the document. The ID of the document is not modified. If the function
+   * name key already exists within the "updates" element it will be overwritten. The document
+   * must be saved for the change to persist.
+   *
+   * @param functionName
+   * @param function
+   * @return
+   * @author rwilson
+   */
+  public void addUpdateHandler(String functionName, String function) {
+    if (content.has("updates")) {
+      JSONObject updates = content.getJSONObject("updates");
+      updates.put(functionName, JSONUtils.stringSerializedFunction(function));
+    } else {
+      JSONObject func = new JSONObject();
+      func.put(functionName, JSONUtils.stringSerializedFunction(function));
+      content.put("updates", func);
+    }
+  }
+
+  /**
+   * Removes a view from this document.
+   * <p>
+   * This isn't persisted until the document is saved.
+   *
+   * @param viewName
+   */
+  public void deleteView(String viewName) {
+    content.remove("_design/" + viewName);
+  }
 
 
   public JSONObject getContent() {
@@ -260,9 +259,9 @@ public class Document {
   public void setContent(JSONObject content) {
     this.content = content;
   }
-	
-	public String toString() {
-		return content.toString();
-	}
+
+  public String toString() {
+    return content.toString();
+  }
 
 }
