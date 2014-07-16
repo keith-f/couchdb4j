@@ -181,8 +181,12 @@ public class Document {
     content.put("language", "javascript"); //FIXME specify language
 
     JSONObject funcs = new JSONObject();
-    funcs.accumulate("map", JSONUtils.stringSerializedFunction(mapFunction));
-    funcs.accumulate("reduce", JSONUtils.stringSerializedFunction(reduceFunction));
+//    funcs.accumulate("map", JSONUtils.stringSerializedFunction(mapFunction));
+    funcs.accumulate("map", mapFunction);
+    if (reduceFunction != null) {
+//      funcs.accumulate("reduce", JSONUtils.stringSerializedFunction(reduceFunction));
+      funcs.accumulate("reduce", reduceFunction);
+    }
 
     final JSONObject viewMap;
     if (content.containsKey("views")) {
