@@ -340,12 +340,12 @@ public class Database {
   }
 
   /**
-   * Retrieves a specific document revision and (optionally) asks for a list of all revisions
+   * Retrieves a specific document revision and (optionally) asks for a list of all revisions.
    *
    * @param id
    * @param revision
    * @param showRevisions
-   * @return the document
+   * @return either the request document, or NULL if the request succeeded, but the document was not found
    */
   public Document getDocument(String id, String revision, boolean showRevisions) throws DatabaseException {
     CouchResponse resp;
@@ -362,12 +362,14 @@ public class Database {
     } catch (SessionException | IOException e) {
       throw new DatabaseException("Database operation failed", e);
     }
-    if (!resp.isOk()) {
+    if (resp.getStatusCode() == 404) {
+      // Request succeeded, but no such document. Return NULL
+      return null;
+    } else if (!resp.isOk()) {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId()
           + "; Error text: " + resp.getPhrase() + "; Reason: " + resp.getErrorReason());
     }
     Document doc = new Document(resp.getBodyAsJSONObject());
-//    doc.setDatabase(this);
     return doc;
   }
 
