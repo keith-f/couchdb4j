@@ -45,7 +45,7 @@ public class ViewResults extends Document {
 
 	/**
 	 * Builds the ViewResults content from the given JSON content. (called only from Database.view())
-	 * This shouldn't be called by user code. 
+	 * This shouldn't be called by username code.
 	 * @param calledView
 	 * @param obj
 	 */

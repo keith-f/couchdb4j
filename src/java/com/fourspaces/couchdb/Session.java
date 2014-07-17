@@ -48,7 +48,7 @@ import java.util.List;
  * a little more robust than the standard URLConnection.
  * <p>
  * Ex usage: <br>
- * Session session = new Session(host,port);
+ * Session session = new Session(hostname,port);
  * Database db = session.getDatabase("dbname");
  *
  * Lifecycle notes:
@@ -59,7 +59,7 @@ import java.util.List;
  * </ul>
  *
  * @author mbreese
- * @author brennanjubb - HTTP-Auth username/pass
+ * @author brennanjubb - HTTP-Auth username/password
  * @author Keith Flanagan - added exception handling, updated to httpcomponents-client-4.3.x, fixed authentication
  */
 public class Session implements AutoCloseable {
@@ -71,10 +71,10 @@ public class Session implements AutoCloseable {
   private static final int CONNECTION_TIMEOUT = 15 * 1000;
 
   protected final Log log = LogFactory.getLog(Session.class);
-  protected final String host;
+  protected final String hostname;
   protected final int port;
-  protected final String user;
-  protected final String pass;
+  protected final String username;
+  protected final String password;
   protected final boolean useHttps;
 
   private final CredentialsProvider credsProvider;
@@ -85,32 +85,32 @@ public class Session implements AutoCloseable {
    * Constructor for obtaining a Session with an HTTP-AUTH username/password and (optionally) a useHttps connection
    * This isn't supported by CouchDB - you need a proxy in front to use this
    *
-   * @param host   - hostname
+   * @param hostname   - hostname
    * @param port   - port to use
-   * @param user   - username
-   * @param pass   - password
+   * @param username   - username
+   * @param password   - password
    * @param useHttps - use an SSL connection?
    */
-  public Session(String host, int port, String user, String pass, boolean useHttps) {
-    this.host = host;
+  public Session(String hostname, int port, String username, String password, boolean useHttps) {
+    this.hostname = hostname;
     this.port = port;
-    this.user = user;
-    this.pass = pass;
+    this.username = username;
+    this.password = password;
     this.useHttps = useHttps;
 
     authCache = new BasicAuthCache();
-    authCache.put(new HttpHost(host, port), new BasicScheme());  //Host-specific credentials
+    authCache.put(new HttpHost(hostname, port), new BasicScheme());  //Host-specific credentials
     credsProvider = new BasicCredentialsProvider();
 
-    if (user != null) {
-      log.info("Username: " + user + ", host: " + host + ", port: " + port);
+    if (username != null) {
+      log.info("Username: " + username + ", hostname: " + hostname + ", port: " + port);
       credsProvider.setCredentials(
-          new AuthScope(host, port),
-          new UsernamePasswordCredentials(user, pass));    // Default credentials
+          new AuthScope(hostname, port),
+          new UsernamePasswordCredentials(username, password));    // Default credentials
 
       httpClient = HttpClients.custom()
           .setDefaultCredentialsProvider(credsProvider)
-          // ... can set things like timeout / user agents here if required ...
+          // ... can set things like timeout / username agents here if required ...
           .build();
     } else {
       httpClient = HttpClients.createDefault();
@@ -121,44 +121,44 @@ public class Session implements AutoCloseable {
    * Constructor for obtaining a Session with an HTTP-AUTH username/password
    * This isn't supported by CouchDB - you need a proxy in front to use this
    *
-   * @param host
+   * @param hostname
    * @param port
-   * @param user - username
-   * @param pass - password
+   * @param username - username
+   * @param password - password
    */
-  public Session(String host, int port, String user, String pass) {
-    this(host, port, user, pass, false);
+  public Session(String hostname, int port, String username, String password) {
+    this(hostname, port, username, password, false);
   }
 
   /**
    * Main constructor for obtaining a Session.
    *
-   * @param host
+   * @param hostname
    * @param port
    */
-  public Session(String host, int port) {
-    this(host, port, null, null, false);
+  public Session(String hostname, int port) {
+    this(hostname, port, null, null, false);
   }
 
   /**
    * Optional constructor that indicates an HTTPS connection should be used.
    * This isn't supported by CouchDB - you need a proxy in front to use this
    *
-   * @param host
+   * @param hostname
    * @param port
    * @param useHttps
    */
-  public Session(String host, int port, boolean useHttps) {
-    this(host, port, null, null, useHttps);
+  public Session(String hostname, int port, boolean useHttps) {
+    this(hostname, port, null, null, useHttps);
   }
 
   /**
    * Read-only
    *
-   * @return the host name
+   * @return the hostname name
    */
-  public String getHost() {
-    return host;
+  public String getHostname() {
+    return hostname;
   }
 
   /**
@@ -178,7 +178,7 @@ public class Session implements AutoCloseable {
    * @return the absolute URL (hostname/port/etc)
    */
   protected String buildUrl(String url) {
-    return ((useHttps) ? "https" : "http") + "://" + host + ":" + port + "/" + url;
+    return ((useHttps) ? "https" : "http") + "://" + hostname + ":" + port + "/" + url;
   }
 
   protected String buildUrl(String url, String queryString) {
@@ -186,7 +186,7 @@ public class Session implements AutoCloseable {
   }
 
   protected String buildUrl(String url, NameValuePair[] params) {
-    url = ((useHttps) ? "https" : "http") + "://" + host + ":" + port + "/" + url;
+    url = ((useHttps) ? "https" : "http") + "://" + hostname + ":" + port + "/" + url;
     if (params.length > 0) {
       url += "?";
     }
@@ -438,9 +438,16 @@ public class Session implements AutoCloseable {
    * Loads a database instance from the server
    *
    * @param name
+   * @param retrieveMetadata set true to perform a CouchDB query that pulls information about the database (and sets it
+   *                         in the Database object), such as document count info. Set false, to create a new Database
+   *                         instance without performing any communication with the server. In this case, document/revision
+   *                         counts are set to a negative value.
    * @return the database (or null if it doesn't exist)
    */
-  public Database getDatabase(String name) throws SessionException {
+  public Database getDatabase(String name, boolean retrieveMetadata) throws SessionException {
+    if (!retrieveMetadata) {
+      return new Database(name, this);
+    }
     CouchResponse resp = get(name);
     if (resp.isOk()) {
       return new Database(resp.getBodyAsJSONObject(), this);
@@ -467,7 +474,7 @@ public class Session implements AutoCloseable {
     }
     CouchResponse resp = put(dbname);
     if (resp.isOk()) {
-      return getDatabase(dbname);
+      return getDatabase(dbname, true);
     } else {
       throw new SessionException("Error creating database: " + name
           + " Status code: " + resp.getStatusCode()
@@ -480,7 +487,7 @@ public class Session implements AutoCloseable {
 
   public Database createDatabaseIfNotExists(String name) throws SessionException {
     try {
-      return getDatabase(name);
+      return getDatabase(name, true);
     } catch (Exception e) {
       return createDatabase(name);
     }

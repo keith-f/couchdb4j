@@ -40,27 +40,40 @@ import org.apache.commons.logging.LogFactory;
  */
 public class Database {
   private static final Log log = LogFactory.getLog(Database.class);
+
+  private static final String VIEW = "/_view/";
+  private static final String DESIGN = "_design/";
+  private static final String UPDATE = "/_update/";
+
   private final String name;
   private int documentCount;
   private int updateSeq;
 
   private Session session;
 
-  private static final String VIEW = "/_view/";
-  private static final String DESIGN = "_design/";
-  private static final String UPDATE = "/_update/";
-
-
   /**
    * C-tor only used by the Session content.  You'd never call this directly.
    *
-   * @param json
-   * @param session
+   * @param json a JSON object describing the databse properties - it's name, number of documents, etc.
+   * @param session the session to use when performing document operations.
    */
   Database(JSONObject json, Session session) {
-    name = json.getString("db_name");
-    documentCount = json.getInt("doc_count");
-    updateSeq = json.getInt("update_seq");
+    this.name = json.getString("db_name");
+    this.documentCount = json.getInt("doc_count");
+    this.updateSeq = json.getInt("update_seq");
+
+    this.session = session;
+  }
+
+  /**
+   * A constructor to use when database metadata is not available or has not been retreived.
+   * @param dbName
+   * @param session
+   */
+  Database(String dbName, Session session) {
+    this.name = dbName;
+    this.documentCount = -1;
+    this.updateSeq = -1;
 
     this.session = session;
   }

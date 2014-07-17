@@ -31,7 +31,7 @@ import org.apache.http.util.EntityUtils;
 
 /**
  * The CouchResponse parses the HTTP response returned by the CouchDB server.
- * This is almost never called directly by the user, but indirectly through
+ * This is almost never called directly by the username, but indirectly through
  * the Session and Database objects.
  * <p>
  * Given a CouchDB response, it will determine if the request was successful
