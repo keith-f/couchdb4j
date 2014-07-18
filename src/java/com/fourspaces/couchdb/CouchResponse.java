@@ -18,9 +18,7 @@ package com.fourspaces.couchdb;
 
 import java.io.IOException;
 
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.Header;
@@ -28,6 +26,8 @@ import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.util.EntityUtils;
+
+import static com.fourspaces.couchdb.util.JSONUtils.mapper;
 
 /**
  * The CouchResponse parses the HTTP response returned by the CouchDB server.
@@ -41,15 +41,16 @@ import org.apache.http.util.EntityUtils;
  * @author mbreese
  */
 public class CouchResponse {
-  Log log = LogFactory.getLog(CouchResponse.class);
+  private static final Log log = LogFactory.getLog(CouchResponse.class);
 
-  private String body;
-  private String path;
-  private Header[] headers;
-  private int statusCode;
-  private String phrase;
+  private final  String body;
+  private final JsonNode jsonBody;
+  private final String path;
+  private final Header[] headers;
+  private final int statusCode;
+  private final String phrase;
   private String methodName;
-  boolean ok = false;
+  private final boolean ok;
 
   private String errorId;
   private String errorReason;
@@ -76,6 +77,7 @@ public class CouchResponse {
     log.info("Status code: " + statusCode);
     String statusCodeStr = String.valueOf(statusCode);
     log.info("Body: "+body);
+    jsonBody = mapper.readTree(body);
     if (statusCodeStr.startsWith("2")) {
       ok = true;
 //      if (path.endsWith("_bulk_docs")) { // Handle bulk doc update differently
@@ -86,9 +88,8 @@ public class CouchResponse {
     } else {
       // Assume error
       ok = false;
-      JSONObject jbody = JSONObject.fromObject(body);
-      errorId = jbody.getString("error");
-      errorReason = jbody.getString("reason");
+      errorId = jsonBody.get("error").asText();
+      errorReason = jsonBody.get("reason").asText();
     }
 
     log.debug(toString());
@@ -100,16 +101,6 @@ public class CouchResponse {
    */
   public String toString() {
     return "[" + methodName + "] " + path + " [" + statusCode + "] " + " => " + body;
-  }
-
-  /**
-   * Retrieves the body of the request as a JSONArray content. (such as listing database names)
-   *
-   * @return
-   */
-  public JSONArray getBodyAsJSONArray() {
-    if (body == null) return null;
-    return JSONArray.fromObject(body);
   }
 
   /**
@@ -139,18 +130,6 @@ public class CouchResponse {
     return errorReason;
   }
 
-  /**
-   * Returns the body of the response as a JSON Object (such as for a document)
-   *
-   * @return
-   */
-  public JSONObject getBodyAsJSONObject() {
-    if (body == null) {
-      return null;
-    }
-    return JSONObject.fromObject(body);
-  }
-
 
   /**
    * Retrieves a specific header from the response (not really used anymore)
@@ -171,19 +150,15 @@ public class CouchResponse {
     return body;
   }
 
+  public JsonNode getJsonBody() {
+    return jsonBody;
+  }
+
   public int getStatusCode() {
     return statusCode;
   }
 
-  public void setStatusCode(int statusCode) {
-    this.statusCode = statusCode;
-  }
-
   public String getPhrase() {
     return phrase;
-  }
-
-  public void setPhrase(String phrase) {
-    this.phrase = phrase;
   }
 }

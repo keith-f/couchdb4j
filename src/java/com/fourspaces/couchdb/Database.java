@@ -18,13 +18,14 @@ package com.fourspaces.couchdb;
 
 import java.io.IOException;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fourspaces.couchdb.util.JSONUtils;
 
+import static com.fourspaces.couchdb.util.JSONUtils.mapper;
 import static com.fourspaces.couchdb.util.JSONUtils.urlEncodePath;
 
-import net.sf.json.*;
-
-import net.sf.json.util.JSONStringer;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -57,10 +58,10 @@ public class Database {
    * @param json a JSON object describing the databse properties - it's name, number of documents, etc.
    * @param session the session to use when performing document operations.
    */
-  Database(JSONObject json, Session session) {
-    this.name = json.getString("db_name");
-    this.documentCount = json.getInt("doc_count");
-    this.updateSeq = json.getInt("update_seq");
+  Database(JsonNode json, Session session) {
+    this.name = json.get("db_name").asText();
+    this.documentCount = json.get("doc_count").asInt();
+    this.updateSeq = json.get("update_seq").asInt();
 
     this.session = session;
   }
@@ -186,7 +187,7 @@ public class Database {
     if (!resp.isOk()) {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
-    ViewResults results = new ViewResults(view, resp.getBodyAsJSONObject());
+    ViewResults results = new ViewResults(view, (ObjectNode) resp.getJsonBody());
 //    results.setDatabase(this);
     return results;
 
@@ -221,25 +222,20 @@ public class Database {
    * @return
    */
   public ViewResults adhoc(final AdHocView view) throws DatabaseException {
+    ObjectNode adHocBody = mapper.createObjectNode();
+    adHocBody.put("map", view.getFunction());
 
-
-    String adHocBody = new JSONStringer()
-        .object()
-        .key("map").value(JSONUtils.stringSerializedFunction(view.getFunction()))
-        .endObject()
-        .toString();
 
     CouchResponse resp;
     try {
-      resp = session.post(name + "/_temp_view", adHocBody, view.getQueryString());
+      resp = session.post(name + "/_temp_view", adHocBody.toString(), view.getQueryString());
     } catch (SessionException e) {
       throw new DatabaseException("Database operation failed", e);
     }
     if (!resp.isOk()) {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
-    ViewResults results = new ViewResults(view, resp.getBodyAsJSONObject());
-//    results.setDatabase(this);
+    ViewResults results = new ViewResults(view, (ObjectNode) resp.getJsonBody());
     return results;
   }
 
@@ -273,10 +269,10 @@ public class Database {
 
     try {
       if (doc.getId() == null || doc.getId().equals("")) {
-        doc.setId(resp.getBodyAsJSONObject().getString("id"));   // FIXME is this correct? or _id?
+        doc.setId(resp.getJsonBody().get("_id").asText());
       }
-      doc.setRev(resp.getBodyAsJSONObject().getString("rev"));   // FIXME is this correct? or _rev?
-    } catch (JSONException e) {
+      doc.setRev(resp.getJsonBody().asText("_rev"));
+    } catch (Exception e) {
       throw new DatabaseException("Error reading JSON", e);
     }
 //    doc.setDatabase(this);
@@ -294,7 +290,13 @@ public class Database {
   public void bulkSaveDocuments(Document[] documents) throws DatabaseException {
     CouchResponse resp;
     try {
-      resp = session.post(name + "/_bulk_docs", new JSONObject().accumulate("docs", documents).toString());
+      ObjectNode object = mapper.createObjectNode();
+      ArrayNode docsArr = object.putArray("docs");
+      for (Document doc : documents) {
+        docsArr.addPOJO(doc);
+      }
+
+      resp = session.post(name + "/_bulk_docs", object.toString());
     } catch (SessionException e) {
       throw new DatabaseException("Database operation failed", e);
     }
@@ -302,21 +304,25 @@ public class Database {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
     // TODO set Ids and revs and name (db)
-    final JSONArray respJsonArray = resp.getBodyAsJSONArray();
-    for (int i = 0; i < documents.length; i++) {
-      JSONObject respObj = respJsonArray.getJSONObject(i);
-      String id = respObj.getString("id");
-      String rev = respObj.getString("rev");
-      if (StringUtils.isBlank(documents[i].getId())) {
-        documents[i].setId(id);
-        documents[i].setRev(rev);
-      } else if (StringUtils.isNotBlank(documents[i].getId()) && documents[i].getId().equals(id)) {
-        documents[i].setRev(rev);
+//    final JSONArray respJsonArray = resp.getBodyAsJSONArray();
+    final ArrayNode respJsonArray = (ArrayNode) resp.getJsonBody();
+
+    int idx = 0;
+    for (JsonNode element : respJsonArray) {
+//    for (int i = 0; i < documents.length; i++) {
+//      JSONObject respObj = respJsonArray.getJSONObject(i);
+      String id = element.get("_id").asText();
+      String rev = element.get("_rev").asText();
+      if (StringUtils.isBlank(documents[idx].getId())) {
+        documents[idx].setId(id);
+        documents[idx].setRev(rev);
+      } else if (StringUtils.isNotBlank(documents[idx].getId()) && documents[idx].getId().equals(id)) {
+        documents[idx].setRev(rev);
       } else {
         log.warn("returned bulk save array in incorrect order, saved documents do not have updated rev or ids");
         throw new DatabaseException("returned bulk save array in incorrect order, saved documents do not have updated rev or ids");
       }
-//      documents[i].setDatabase(this);
+      idx++;
     }
   }
 
@@ -382,7 +388,7 @@ public class Database {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId()
           + "; Error text: " + resp.getPhrase() + "; Reason: " + resp.getErrorReason());
     }
-    Document doc = new Document(resp.getBodyAsJSONObject());
+    Document doc = new Document((ObjectNode) resp.getJsonBody());
     return doc;
   }
 

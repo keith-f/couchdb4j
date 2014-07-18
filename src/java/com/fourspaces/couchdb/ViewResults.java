@@ -19,11 +19,12 @@ package com.fourspaces.couchdb;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import static com.fourspaces.couchdb.util.JSONUtils.mapper;
 
 /**
  * The results of a view request is just a specialized Document content.
@@ -49,7 +50,7 @@ public class ViewResults extends Document {
 	 * @param calledView
 	 * @param obj
 	 */
-	ViewResults(View calledView, JSONObject obj) {
+	ViewResults(View calledView, ObjectNode obj) {
 		super(obj);
 		this.calledView=calledView;
 	}
@@ -63,13 +64,11 @@ public class ViewResults extends Document {
 	 * @return
 	 */
 	public List<Document> getResults() {
-		JSONArray ar = getContent().getJSONArray("rows");
-		List<Document> docs = new ArrayList<>(ar.size());
-		for (int i=0 ; i< ar.size(); i++) {
-			log.info(ar.getString(i));
-			if (ar.get(i)!=null && !ar.getString(i).equals("null")) {
-				Document d = new Document(ar.getJSONObject(i));
-//				d.setDatabase(database);
+    List<Document> docs = new ArrayList<>(getContent().size());
+    for (JsonNode row : getContent()) {
+			log.info(row.toString());
+			if (!row.isNull()) {
+				Document d = new Document((ObjectNode) row);
 				docs.add(d);
 			}
 		}

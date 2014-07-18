@@ -16,8 +16,7 @@
 
 package com.fourspaces.couchdb;
 
-import net.sf.json.JSONArray;
-import net.sf.json.JSONObject;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpEntity;
@@ -39,6 +38,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
+
+
 
 /**
  * The Session is the main connection to the CouchDB instance.  However, you'll only use the Session
@@ -425,11 +426,9 @@ public class Session implements AutoCloseable {
    */
   public List<String> getDatabaseNames() throws SessionException {
     CouchResponse resp = get("_all_dbs");
-    JSONArray ar = resp.getBodyAsJSONArray();
-
-    List<String> dbs = new ArrayList<>(ar.size());
-    for (int i = 0; i < ar.size(); i++) {
-      dbs.add(ar.getString(i));
+    List<String> dbs = new ArrayList<>(resp.getJsonBody().size());
+    for (JsonNode node : resp.getJsonBody()) {
+      dbs.add(node.asText());
     }
     return dbs;
   }
@@ -450,7 +449,7 @@ public class Session implements AutoCloseable {
     }
     CouchResponse resp = get(name);
     if (resp.isOk()) {
-      return new Database(resp.getBodyAsJSONObject(), this);
+      return new Database(resp.getJsonBody(), this);
     } else {
       throw new SessionException("Error getting database: " + name
           + " Status code: " + resp.getStatusCode()
@@ -523,14 +522,11 @@ public class Session implements AutoCloseable {
   public List<ReplicationTask> getReplicationTasks() throws SessionException {
     final List<ReplicationTask> replicationTasks = new ArrayList<>();
     CouchResponse resp = get("_active_tasks");
-    JSONArray ar = resp.getBodyAsJSONArray();
 
-    for (int i = 0; i < ar.size(); i++) {
-      final JSONObject task = ar.getJSONObject(i);
-
-      if (ReplicationTask.TASK_TYPE.equals(task.getString(CouchTask.TASK_TYPE_KEY))) {
-        final ReplicationTask replicationTask = new ReplicationTask(task.getString(CouchTask.TASK_TASK_KEY),
-            task.getString(CouchTask.TASK_STATUS_KEY), task.getString(CouchTask.TASK_PID_KEY));
+    for (JsonNode task : resp.getJsonBody()) {
+      if (ReplicationTask.TASK_TYPE.equals(task.get(CouchTask.TASK_TYPE_KEY).asText())) {
+        final ReplicationTask replicationTask = new ReplicationTask(task.get(CouchTask.TASK_TASK_KEY).asText(),
+            task.get(CouchTask.TASK_STATUS_KEY).asText(), task.get(CouchTask.TASK_PID_KEY).asText());
 
         if (replicationTask.loadDetailsFromTask()) {
           replicationTasks.add(replicationTask);
@@ -558,7 +554,7 @@ public class Session implements AutoCloseable {
 
     try {
       log.trace("Post URL: " + postUrl);
-      final JSONObject replicateReq = task.getCreateRequest();
+      final JsonNode replicateReq = task.getCreateRequest();
       log.trace(replicateReq.toString());
       CouchResponse resp = post("_replicate", replicateReq.toString());
       return (resp.getErrorId() == null);

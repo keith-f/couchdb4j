@@ -16,13 +16,11 @@
 
 package com.fourspaces.couchdb;
 
-import java.util.Map;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import com.fourspaces.couchdb.util.JSONUtils;
-import net.sf.json.*;
-
-import org.apache.commons.lang.StringUtils;
-
+import static com.fourspaces.couchdb.util.JSONUtils.mapper;
 
 /**
  * Everything in CouchDB is a Document.  In this case, the document is an content backed by a
@@ -51,14 +49,11 @@ import org.apache.commons.lang.StringUtils;
  * @author Keith Flanagan - refactoring.
  */
 public class Document {
-//	Log log = LogFactory.getLog(Document.class);
-
   //  public static final String REVISION_HISTORY_PROP = "_revisions";  // FIXME is this correct? '_revs' is used later on.
   public static final String DOC_PROP__ID = "_id";
   public static final String DOC_PROP__REV = "_rev";
 
-  //	protected Database database;
-  protected JSONObject content;
+  protected ObjectNode content;
 
 //	boolean loaded = false;
 
@@ -66,7 +61,7 @@ public class Document {
    * Create a new Document
    */
   public Document() {
-    this.content = new JSONObject();
+    content = mapper.createObjectNode();
   }
 
   /**
@@ -74,25 +69,11 @@ public class Document {
    *
    * @param obj
    */
-  public Document(JSONObject obj) {
+  public Document(ObjectNode obj) {
     this.content = obj;
-//		loaded=true;
   }
 
-  /**
-   * Load data into this document from a differing JSONObject
-   * <p>
-   * This is mainly for reloading data for an content that was retrieved from a view.  This version
-   * doesn't overwrite any unsaved data that is currently present in this content.
-   *
-   * @param object2
-   */
-//	protected void load(JSONObject object2) {
-//		if (!loaded) {
-//			content.putAll(object2);
-//			loaded=true;
-//		}
-//	}
+
 
   /**
    * This document's id (if saved)
@@ -100,11 +81,13 @@ public class Document {
    * @return
    */
   public String getId() {
-    return content.optString(DOC_PROP__ID);
+    return content.get(DOC_PROP__ID).asText();
+//    return content.optString(DOC_PROP__ID);
   }
 
   public void setId(String id) {
     content.put(DOC_PROP__ID, id);
+//    content.put(DOC_PROP__ID, id);
   }
 
   /**
@@ -126,7 +109,8 @@ public class Document {
    * @return
    */
   public String getRev() {
-    return content.optString(DOC_PROP__REV);
+    return content.get(DOC_PROP__REV).asText();
+//    return content.optString(DOC_PROP__REV);
 //    if (StringUtils.isNotBlank(content.optString("_rev"))) {
 //      return content.optString("_rev");
 //    } else {
@@ -169,7 +153,7 @@ public class Document {
   public View getView(String name) {
 
     if (content.has("views")) {
-      JSONObject views = content.getJSONObject("views");
+      JsonNode views = content.get("views");
       if (views.has(name)) {
         return new View(this, name);
       }
@@ -180,24 +164,13 @@ public class Document {
   public void addView(String viewName, String mapFunction, String reduceFunction) {
     content.put("language", "javascript"); //FIXME specify language
 
-    JSONObject funcs = new JSONObject();
-//    funcs.accumulate("map", JSONUtils.stringSerializedFunction(mapFunction));
-    funcs.accumulate("map", mapFunction);
+    final ObjectNode viewMap = content.has("views") ? (ObjectNode) content.get("views") : content.putObject("views");
+
+    ObjectNode funcs = viewMap.putObject(viewName);
+    funcs.put("map", mapFunction);
     if (reduceFunction != null) {
-//      funcs.accumulate("reduce", JSONUtils.stringSerializedFunction(reduceFunction));
-      funcs.accumulate("reduce", reduceFunction);
+      funcs.put("reduce", reduceFunction);
     }
-
-    final JSONObject viewMap;
-    if (content.containsKey("views")) {
-      viewMap = content.getJSONObject("views");
-    } else {
-      viewMap = new JSONObject();
-    }
-
-    viewMap.put(viewName, funcs);
-
-    content.put("views", viewMap);
   }
 
   /**
@@ -212,15 +185,8 @@ public class Document {
    */
   public void addUpdateHandler(String designDoc, String functionName, String function) {
     content.put("_id", "_design/" + designDoc);
-
-    if (content.has("updates")) {
-      JSONObject updates = content.getJSONObject("updates");
-      updates.put(functionName, JSONUtils.stringSerializedFunction(function));
-    } else {
-      JSONObject func = new JSONObject();
-      func.put(functionName, JSONUtils.stringSerializedFunction(function));
-      content.put("updates", func);
-    }
+    final ObjectNode updates = content.has("updates") ? (ObjectNode) content.get("updates") : content.putObject("updates");
+    updates.put(functionName, function);
   }
 
   /**
@@ -234,14 +200,8 @@ public class Document {
    * @author rwilson
    */
   public void addUpdateHandler(String functionName, String function) {
-    if (content.has("updates")) {
-      JSONObject updates = content.getJSONObject("updates");
-      updates.put(functionName, JSONUtils.stringSerializedFunction(function));
-    } else {
-      JSONObject func = new JSONObject();
-      func.put(functionName, JSONUtils.stringSerializedFunction(function));
-      content.put("updates", func);
-    }
+    final ObjectNode updates = content.has("updates") ? (ObjectNode) content.get("updates") : content.putObject("updates");
+    updates.put(functionName, function);
   }
 
   /**
@@ -256,11 +216,11 @@ public class Document {
   }
 
 
-  public JSONObject getContent() {
+  public ObjectNode getContent() {
     return content;
   }
 
-  public void setContent(JSONObject content) {
+  public void setContent(ObjectNode content) {
     this.content = content;
   }
 

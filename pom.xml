@@ -10,6 +10,15 @@ http://maven.apache.org/maven-v4_0_0.xsd">
   <version>0.3.1-kf</version>
   <url>http://code.google.com/p/couchdb4j/</url>
 
+  <properties>
+    <!-- version constants -->
+    <jackson-annotations.version>2.4.1</jackson-annotations.version>
+    <jackson-core.version>2.4.1.1</jackson-core.version>
+    <jackson-databind.version>2.4.1</jackson-databind.version>
+
+    <http-client.version>4.3.4</http-client.version>
+  </properties>
+
   <build>
     <sourceDirectory>src/java</sourceDirectory>
     <testSourceDirectory>src/test</testSourceDirectory>
@@ -54,44 +63,35 @@ http://maven.apache.org/maven-v4_0_0.xsd">
           <artifactId>servlet-api</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
 
-    </dependency>
-    <dependency>
-      <groupId>net.sf.json-lib</groupId>
-      <artifactId>json-lib</artifactId>
-      <version>2.3</version>
-      <scope>compile</scope>
-      <classifier>jdk15</classifier>
-      <exclusions>
-        <exclusion>
-          <groupId>org.jruby</groupId>
-          <artifactId>jruby</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.groovy</groupId>
-          <artifactId>groovy-all</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>log4j</groupId>
-          <artifactId>log4j</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
     <dependency>
       <groupId>net.sf.ezmorph</groupId>
       <artifactId>ezmorph</artifactId>
       <version>1.0.4</version>
       <scope>compile</scope>
     </dependency>
-    <!--<dependency>-->
-    <!--<groupId>org.apache.httpcomponents</groupId>-->
-    <!--<artifactId>httpcomponents-client</artifactId>-->
-    <!--<version>4.3.4</version>-->
-    <!--</dependency>-->
+
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
-      <version>4.3.4</version>
+      <version>${http-client.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>${jackson-core.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson-databind.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+      <version>${jackson-annotations.version}</version>
     </dependency>
   </dependencies>
 

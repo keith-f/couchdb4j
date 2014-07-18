@@ -24,8 +24,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 package com.fourspaces.couchdb.util;
 
-import net.sf.json.JSONFunction;
-import net.sf.json.JSONString;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -36,21 +35,10 @@ import java.net.URLEncoder;
  */
 public class JSONUtils {
 
+  //FIXME..
+  public static ObjectMapper mapper = new ObjectMapper();
+
   private JSONUtils() {
-  }
-
-  public static JSONFunction stringSerializedFunction(final String func) {
-    return new JSONFunction(func) {
-      @Override
-      public String getText() {
-        return "\"" + func + "\"";
-      }
-
-      @Override
-      public String toString() {
-        return getText();
-      }
-    };
   }
 
   public static String urlEncodePath(String path) throws UnsupportedEncodingException {
