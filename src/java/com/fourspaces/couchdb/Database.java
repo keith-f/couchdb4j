@@ -135,9 +135,9 @@ public class Database {
    *
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
-  public ViewResults getAllDocumentsWithCount(int count) throws DatabaseException {
+  public ViewResults getAllDocumentsWithCount(int limit) throws DatabaseException {
     View v = new View("_all_docs");
-    v.setCount(count);
+    v.setLimit(limit);
     return view(v, false);
   }
 
@@ -207,11 +207,11 @@ public class Database {
   /**
    * Runs an ad-hoc view from a string
    *
-   * @param function - the Javascript function to use as the filter.
+   * @param mapFunction - the Javascript function to use as the filter.
    * @return results
    */
-  public ViewResults adhoc(String function) throws DatabaseException {
-    return adhoc(new AdHocView(function));
+  public ViewResults adhoc(String mapFunction) throws DatabaseException {
+    return adhoc(new AdHocView(mapFunction, null));
   }
 
   /**
@@ -223,7 +223,7 @@ public class Database {
    */
   public ViewResults adhoc(final AdHocView view) throws DatabaseException {
     ObjectNode adHocBody = mapper.createObjectNode();
-    adHocBody.put("map", view.getFunction());
+    adHocBody.put("map", view.getMapFunction());
 
 
     CouchResponse resp;
