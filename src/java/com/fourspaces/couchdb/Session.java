@@ -35,6 +35,8 @@ import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
@@ -175,70 +177,89 @@ public class Session implements AutoCloseable {
   /**
    * For a given url (such as /_all_dbs/), build the database connection url
    *
-   * @param url
+   * @param path
    * @return the absolute URL (hostname/port/etc)
    */
-  protected String buildUrl(String url) {
-    return ((useHttps) ? "https" : "http") + "://" + hostname + ":" + port + "/" + url;
+  protected URI buildUrl(String path) throws URISyntaxException {
+//    return ((useHttps) ? "https" : "http") + "://" + hostname + ":" + port + "/" + path;
+
+    String scheme = useHttps ? "https" : "http";
+    String userInfo = null;
+    String queryString = null;
+    String fragment = null;
+    if (!path.startsWith("/")) {
+      path = "/"+path;
+    }
+
+    URI uri =  new URI(scheme, userInfo, hostname, port, path, queryString, fragment);
+    //System.out.println("URL: "+uri.toASCIIString());
+    return uri;
   }
 
-  protected String buildUrl(String url, String queryString) {
-    return (queryString != null) ? buildUrl(url) + "?" + queryString : buildUrl(url);
-  }
+  protected URI buildUrl(String path, String queryString) throws URISyntaxException {
+    String scheme = useHttps ? "https" : "http";
+    String userInfo = null;
+    String fragment = null;
+    if (!path.startsWith("/")) {
+      path = "/"+path;
+    }
 
-  protected String buildUrl(String url, NameValuePair[] params) {
-    url = ((useHttps) ? "https" : "http") + "://" + hostname + ":" + port + "/" + url;
-    if (params.length > 0) {
-      url += "?";
-    }
-    for (NameValuePair param : params) {
-      url += param.getName() + "=" + param.getValue();
-    }
-    return url;
+    URI uri =  new URI(scheme, userInfo, hostname, port, path, queryString, fragment);
+    //System.out.println("URL: "+uri.toASCIIString());
+    return uri;
   }
 
   /**
    * Package level access to send a DELETE request to the given URL
    *
-   * @param url
+   * @param path
    * @return
    */
-  public CouchResponse delete(String url) throws SessionException {
-    HttpDelete del = new HttpDelete(buildUrl(url));
-    return http(del);
+  public CouchResponse delete(String path) throws SessionException {
+    try {
+      HttpDelete del = new HttpDelete(buildUrl(path));
+      return http(del);
+    } catch (URISyntaxException e) {
+      throw new SessionException("Invalid URI", e);
+    }
   }
 
   /**
    * Send a POST with no body / parameters
    *
-   * @param url
+   * @param path
    * @return
    */
-  public CouchResponse post(String url) throws SessionException {
-    return post(url, null, null);
+  public CouchResponse post(String path) throws SessionException {
+    return post(path, null, null);
   }
 
   /**
    * Send a POST with body
    *
-   * @param url
+   * @param path
    * @param content
    * @return
    */
-  public CouchResponse post(String url, String content) throws SessionException {
-    return post(url, content, null);
+  public CouchResponse post(String path, String content) throws SessionException {
+    return post(path, content, null);
   }
 
   /**
    * Send a POST with a body and query string
    *
-   * @param url
+   * @param path
    * @param content
    * @param queryString
    * @return
    */
-  public CouchResponse post(String url, String content, String queryString) throws SessionException {
-    HttpPost post = new HttpPost(buildUrl(url, queryString));
+  public CouchResponse post(String path, String content, String queryString) throws SessionException {
+    HttpPost post;
+    try {
+      post = new HttpPost(buildUrl(path, queryString));
+    } catch (URISyntaxException e) {
+      throw new SessionException("Invalid URI", e);
+    }
     if (content != null) {
       HttpEntity entity;
       entity = new StringEntity(content, DEFAULT_CHARSET);
@@ -251,15 +272,20 @@ public class Session implements AutoCloseable {
   /**
    * Send a POST with a body, query string and specified content type
    *
-   * @param url
+   * @param path
    * @param ctype
    * @param content
    * @param queryString
    * @return
    * @author rwilson
    */
-  public CouchResponse post(String url, String ctype, String content, String queryString) throws SessionException {
-    HttpPost post = new HttpPost(buildUrl(url, queryString));
+  public CouchResponse post(String path, String ctype, String content, String queryString) throws SessionException {
+    HttpPost post;
+    try {
+      post = new HttpPost(buildUrl(path, queryString));
+    } catch (URISyntaxException e) {
+      throw new SessionException("Invalid URI", e);
+    }
     if (content != null) {
       HttpEntity entity;
       entity = new StringEntity(content, DEFAULT_CHARSET);
@@ -267,40 +293,39 @@ public class Session implements AutoCloseable {
       if (ctype != null) {
         post.setHeader(new BasicHeader("Content-Type", ctype));
       }
-
     }
-
     return http(post);
   }
 
   /**
    * Send a PUT  (for creating databases)
    *
-   * @param url
+   * @param path
    * @return
    */
-  public CouchResponse put(String url) throws SessionException {
-    return put(url, null);
+  public CouchResponse put(String path) throws SessionException {
+    return put(path, null);
   }
 
   /**
    * Send a PUT with a body (for creating documents)
    *
-   * @param url
+   * @param path
    * @param content
    * @return
    */
-  public CouchResponse put(String url, String content) throws SessionException {
-    HttpPut put = new HttpPut(buildUrl(url));
-//    log.info("Orig URL: " + url);
-//    log.info("Built URL: " + buildUrl(url));
-//    log.info("Content: " + content);
+  public CouchResponse put(String path, String content) throws SessionException {
+    HttpPut put;
+    try {
+      put = new HttpPut(buildUrl(path));
+    } catch (URISyntaxException e) {
+      throw new SessionException("Invalid URI", e);
+    }
     if (content != null) {
       HttpEntity entity;
       entity = new StringEntity(content, DEFAULT_CHARSET);
       put.setEntity(entity);
       put.setHeader(new BasicHeader("Content-Type", MIME_TYPE_JSON));
-
     }
     return http(put);
   }
@@ -308,14 +333,18 @@ public class Session implements AutoCloseable {
   /**
    * Overloaded Put using by attachments
    */
-  public CouchResponse put(String url, String ctype, String content) throws SessionException {
-    HttpPut put = new HttpPut(buildUrl(url));
+  public CouchResponse put(String path, String ctype, String content) throws SessionException {
+    HttpPut put;
+    try {
+      put = new HttpPut(buildUrl(path));
+    } catch (URISyntaxException e) {
+      throw new SessionException("Invalid URI", e);
+    }
     if (content != null) {
       HttpEntity entity;
       entity = new StringEntity(content, DEFAULT_CHARSET);
       put.setEntity(entity);
       put.setHeader(new BasicHeader("Content-Type", ctype));
-
     }
     return http(put);
   }
@@ -323,15 +352,20 @@ public class Session implements AutoCloseable {
   /**
    * Overloaded Put using by attachments and query string
    *
-   * @param url
+   * @param path
    * @param ctype
    * @param content
    * @param queryString
    * @return
    * @author rwilson
    */
-  public CouchResponse put(String url, String ctype, String content, String queryString) throws SessionException {
-    HttpPut put = new HttpPut(buildUrl(url, queryString));
+  public CouchResponse put(String path, String ctype, String content, String queryString) throws SessionException {
+    HttpPut put;
+    try {
+      put = new HttpPut(buildUrl(path, queryString));
+    } catch (URISyntaxException e) {
+      throw new SessionException("Invalid URI", e);
+    }
     if (content != null) {
       HttpEntity entity;
       entity = new StringEntity(content, DEFAULT_CHARSET);
@@ -339,7 +373,6 @@ public class Session implements AutoCloseable {
       if (ctype != null) {
         put.setHeader(new BasicHeader("Content-Type", ctype));
       }
-
     }
     return http(put);
   }
@@ -347,36 +380,32 @@ public class Session implements AutoCloseable {
   /**
    * Send a GET request
    *
-   * @param url
+   * @param path
    * @return
    */
-  public CouchResponse get(String url) throws SessionException {
-    HttpGet get = new HttpGet(buildUrl(url));
-    return http(get);
-  }
-
-  /**
-   * Send a GET request with a number of name/value pairs as a query string
-   *
-   * @param url
-   * @param queryParams
-   * @return
-   */
-  public CouchResponse get(String url, NameValuePair[] queryParams) throws SessionException {
-    HttpGet get = new HttpGet(buildUrl(url, queryParams));
-    return http(get);
+  public CouchResponse get(String path) throws SessionException {
+    try {
+      HttpGet get = new HttpGet(buildUrl(path));
+      return http(get);
+    } catch (URISyntaxException e) {
+      throw new SessionException("Invalid URI", e);
+    }
   }
 
   /**
    * Send a GET request with a queryString (?foo=bar)
    *
-   * @param url
+   * @param path
    * @param queryString
    * @return
    */
-  public CouchResponse get(String url, String queryString) throws SessionException {
-    HttpGet get = new HttpGet(buildUrl(url, queryString));
-    return http(get);
+  public CouchResponse get(String path, String queryString) throws SessionException {
+    try {
+      HttpGet get = new HttpGet(buildUrl(path, queryString));
+      return http(get);
+    } catch (URISyntaxException e) {
+      throw new SessionException("Invalid URI", e);
+    }
   }
 
   /**
@@ -396,13 +425,11 @@ public class Session implements AutoCloseable {
     context.setAuthCache(authCache);
     try (CloseableHttpResponse httpResponse = httpClient.execute(req, context)) {
       CouchResponse currentResponse = new CouchResponse(req, httpResponse);
-
       EntityUtils.consume(httpResponse.getEntity()); //Required to ensure connection is reusable
       return currentResponse;
     } catch (Exception e) {
       throw new SessionException("HTTP request failed", e);
     }
-
   }
 
   private String encodeParameter(String paramValue) {
@@ -550,7 +577,12 @@ public class Session implements AutoCloseable {
    * @return True if the task was accepted by the couch server instance; False otherwise
    */
   public boolean postReplicationTask(final ReplicationTask task) throws SessionException {
-    final String postUrl = buildUrl("_replicate");
+    final URI postUrl;
+    try {
+      postUrl = buildUrl("_replicate");
+    } catch (URISyntaxException e) {
+      throw new SessionException("Invalid URI", e);
+    }
 
     try {
       log.trace("Post URL: " + postUrl);
