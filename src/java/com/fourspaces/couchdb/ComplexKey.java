@@ -18,6 +18,7 @@
 package com.fourspaces.couchdb;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -77,7 +78,8 @@ public class ComplexKey {
     return key;
   }
 
-  public String toJsonText() {
-    return toJson().textValue();
+  public String toJsonText() throws JsonProcessingException {
+    Object value = mapper.treeToValue(toJson(), Object.class);
+    return mapper.writeValueAsString(value);
   }
 }
