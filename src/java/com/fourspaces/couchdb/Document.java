@@ -149,13 +149,16 @@ public class Document {
    *
    * @param name
    * @return
+   *
+   * @deprecated Not sure we need this...
    */
+  @Deprecated //Is this method needed??
   public View getView(String name) {
 
     if (content.has("views")) {
       JsonNode views = content.get("views");
       if (views.has(name)) {
-        return new View(this, name);
+        return new View(name);
       }
     }
     return null;

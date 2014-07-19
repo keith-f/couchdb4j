@@ -35,23 +35,13 @@ public class View {
 	protected Boolean update;
 	protected Boolean reverse;
 	protected String skip;
-    protected Boolean group;
+  protected Boolean group;
+  protected Integer groupLevel;
 	protected Boolean includeDocs;
 	
 	protected String name;
-	protected Document document;
+//	protected Document document;
 	protected String function;
-	
-	/**
-	 * Build a view given a document and a name
-	 * 
-	 * @param doc
-	 * @param name
-	 */
-	public View(Document doc, String name) {
-		this.document=doc;
-		this.name=name;
-	}
 	
 	/**
 	 * Build a view given only a fullname ex: ("_add_docs", "_temp_view")
@@ -59,25 +49,8 @@ public class View {
 	 */
 	public View(String fullname) {
 		this.name=fullname;
-		this.document=null;
 	}
-	
-	/**
-	 * Builds a new view for a document, a given name, and the function definition.
-	 * This <i>does not actually add it to the document</i>.  That is handled by
-	 * Document.addView()
-	 * <p>
-	 * This constructor should only be called by Document.addView();
-	 * 
-	 * @param doc
-	 * @param name
-	 * @param function
-	 */
-	View(Document doc, String name, String function) {
-		this.name=name;
-		this.document=doc;
-		this.function=function;
-	}
+
 	
 	/**
 	 * Based upon settings, builds the queryString to add to the URL for this view.
@@ -119,10 +92,14 @@ public class View {
 			if (!queryString.equals("")) { queryString+="&"; }
 		 			queryString+="descending=true";
 		}
-        if (group!=null && group.booleanValue()) {
-        	if (!queryString.equals("")) { queryString+="&"; }
-        		queryString+="group=true";		
-        }
+    if (group!=null && group.booleanValue()) {
+      if (!queryString.equals("")) { queryString+="&"; }
+        queryString+="group=true";
+    }
+    if (groupLevel!=null) {
+      if (!queryString.equals("")) { queryString+="&"; }
+      queryString+="group_level="+groupLevel;
+    }
 		return queryString.equals("") ? null : queryString;
 		                 
 	}
@@ -201,17 +178,7 @@ public class View {
 	public String getName() {
 		return name;
 	}
-	/**
-	 * the full name for this view (w/ doc id, if avail)
-	 * in the form of : 
-	 * "docid:name"
-	 * or 
-	 * "name"
-	 * @return
-	 */
-	public String getFullName() {
-		return (document==null) ? name: document.getViewDocumentId()+"/"+name;
-	}
+
 
 	/**
 	 * The function definition for this view, if it is available.
@@ -220,5 +187,12 @@ public class View {
 	public String getFunction() {
 		return function;
 	}
-	
+
+  public Integer getGroupLevel() {
+    return groupLevel;
+  }
+
+  public void setGroupLevel(Integer groupLevel) {
+    this.groupLevel = groupLevel;
+  }
 }
