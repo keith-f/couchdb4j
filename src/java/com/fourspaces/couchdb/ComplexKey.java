@@ -76,4 +76,8 @@ public class ComplexKey {
     }
     return key;
   }
+
+  public String toJsonText() {
+    return toJson().textValue();
+  }
 }
