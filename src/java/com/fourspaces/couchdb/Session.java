@@ -192,7 +192,7 @@ public class Session implements AutoCloseable {
     }
 
     URI uri =  new URI(scheme, userInfo, hostname, port, path, queryString, fragment);
-    System.out.println("URL: "+uri.toASCIIString());
+//    log.info("URL: "+uri.toASCIIString());
     return uri;
   }
 
@@ -205,7 +205,7 @@ public class Session implements AutoCloseable {
     }
 
     URI uri =  new URI(scheme, userInfo, hostname, port, path, queryString, fragment);
-    System.out.println("URL: "+uri.toASCIIString());
+//    log.info("URL: "+uri.toASCIIString());
     return uri;
   }
 

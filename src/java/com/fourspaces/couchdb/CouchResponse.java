@@ -43,7 +43,7 @@ import static com.fourspaces.couchdb.util.JSONUtils.mapper;
 public class CouchResponse {
   private static final Log log = LogFactory.getLog(CouchResponse.class);
 
-  private final  String body;
+  private final String body;
   private final JsonNode jsonBody;
   private final String path;
   private final Header[] headers;
@@ -74,9 +74,9 @@ public class CouchResponse {
     statusCode = response.getStatusLine().getStatusCode();
     phrase = response.getStatusLine().getReasonPhrase();
 
-    log.info("Status code: " + statusCode);
+//    log.info("Status code: " + statusCode);
     String statusCodeStr = String.valueOf(statusCode);
-    log.info("Body: "+body);
+//    log.info("Body: "+body);
     jsonBody = mapper.readTree(body);
     if (statusCodeStr.startsWith("2")) {
       ok = true;
