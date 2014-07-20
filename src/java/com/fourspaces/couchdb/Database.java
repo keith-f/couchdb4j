@@ -170,17 +170,17 @@ public class Database {
    * @return
    */
   private ViewResults view(final View view, final boolean isPermanentView) throws DatabaseException {
-    String url = null;
+    String path;
     if (isPermanentView) {
       String[] elements = view.getFullName().split("/");
-      url = this.name + "/" + ((elements.length < 2) ? elements[0] : DESIGN + elements[0] + VIEW + elements[1]);
+      path =  "/" + this.name + "/" + ((elements.length < 2) ? elements[0] : DESIGN + elements[0] + VIEW + elements[1]);
     } else {
-      url = this.name + "/" + view.getFullName();
+      path =  "/" + this.name + "/" + view.getFullName();
     }
 
     CouchResponse resp;
     try {
-      resp = session.get(url, view.getQueryString());
+      resp = session.get(path, view.getQueryString());
     } catch (SessionException e) {
       throw new DatabaseException("Database operation failed", e);
     }
@@ -188,7 +188,6 @@ public class Database {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
     ViewResults results = new ViewResults(view, (ObjectNode) resp.getJsonBody());
-//    results.setDatabase(this);
     return results;
 
   }
