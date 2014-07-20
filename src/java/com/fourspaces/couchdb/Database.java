@@ -122,9 +122,7 @@ public class Database {
    * @return ViewResults - all design docs
    */
   public ViewResult getAllDesignDocuments() throws DatabaseException {
-    ViewQuery v = new ViewQuery("_all_docs");
-    v.startKey = "%22_design%2F%22";
-    v.endKey = "%22_design0%22";
+    ViewQuery v = new ViewQuery("_design_docs");
     v.includeDocs = Boolean.TRUE;
     return view(v, false);
   }
@@ -182,6 +180,8 @@ public class Database {
       resp = session.get(path, viewQuery.getQueryString());
     } catch (SessionException e) {
       throw new DatabaseException("Database operation failed", e);
+    } catch (ViewQueryCompilationException e) {
+      throw new DatabaseException("Failed to create query URL", e);
     }
     if (!resp.isOk()) {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
@@ -229,6 +229,8 @@ public class Database {
       resp = session.post(name + "/_temp_view", adHocBody.toString(), view.getQueryString());
     } catch (SessionException e) {
       throw new DatabaseException("Database operation failed", e);
+    } catch (ViewQueryCompilationException e) {
+      throw new DatabaseException("Failed to create query URL", e);
     }
     if (!resp.isOk()) {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());

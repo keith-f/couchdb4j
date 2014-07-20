@@ -16,6 +16,10 @@
 
 package com.fourspaces.couchdb;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fourspaces.couchdb.util.JSONUtils;
+
 /**
  * The View is the mechanism for performing Querys on a CouchDB instance.
  * The view can be named or ad-hoc (see AdHocView). (Currently [14 Sept 2007] named view aren't working in the 
@@ -34,8 +38,6 @@ package com.fourspaces.couchdb;
  */
 public class ViewQuery {
 
-  public static final int GROUP_LEVEL_EXACT = -1;
-
   public static enum StaleTypes {
     OK ("ok"),                      // CouchDB will not refresh the view even if it is stale
     UPDATE_AFTER ("update_after");  // CouchDB will update the view after the stale result is returned (v1.1 or later)
@@ -50,16 +52,17 @@ public class ViewQuery {
     }
   }
 
+
 	protected String key;
-	protected String startKey;
+	protected JsonNode startKey;
   protected String startKeyDocId;
-	protected String endKey;
+	protected JsonNode endKey;
   protected String endKeyDocId;
 	protected Integer limit;
   protected StaleTypes staleType;
 	protected Boolean descending;
 	protected Boolean skip;
-  protected Boolean group;
+  protected Boolean group;      // group=true effectively sets groupLevel=999 (i.e., exact)
   protected Integer groupLevel;
   protected Boolean reduce;
 	protected Boolean includeDocs;
@@ -112,21 +115,30 @@ public class ViewQuery {
 	 * 
 	 * @return
 	 */
-	public String getQueryString() {
+	public String getQueryString() throws ViewQueryCompilationException{
     StringBuilder queryString = new StringBuilder();
 
 		if (key != null) {
 			queryString.append("key=").append(key).append("&");
 		}
 		if (startKey != null) {
-			queryString.append("startkey=").append(startKey).append("&");
-		}
+
+      try {
+        queryString.append("startkey=").append(JSONUtils.toJsonText(startKey)).append("&");
+      } catch (JsonProcessingException e) {
+        throw new ViewQueryCompilationException("Failed to convert a JsonNode to text", e);
+      }
+    }
     if (startKeyDocId != null) {
       queryString.append("startkey_docid=").append(startKeyDocId).append("&");
     }
 		if (endKey != null) {
-			queryString.append("endkey=").append(endKey).append("&");
-		}
+      try {
+        queryString.append("endkey=").append(JSONUtils.toJsonText(endKey)).append("&");
+      } catch (JsonProcessingException e) {
+        throw new ViewQueryCompilationException("Failed to convert a JsonNode to text", e);
+      }
+    }
     if (endKeyDocId != null) {
       queryString.append("endkey_docid=").append(endKeyDocId).append("&");
     }
@@ -146,11 +158,7 @@ public class ViewQuery {
       queryString.append("group=").append(String.valueOf(group).toLowerCase()).append("&");
     }
     if (groupLevel != null) {
-      if (groupLevel == -1) {
-        queryString.append("group_level=exact").append("&");
-      } else {
-        queryString.append("group_level=").append(groupLevel).append("&");
-      }
+      queryString.append("group_level=").append(groupLevel).append("&");
     }
     if (reduce != null) {
       queryString.append("reduce=").append(String.valueOf(reduce).toLowerCase()).append("&");
@@ -181,19 +189,19 @@ public class ViewQuery {
     this.key = key;
   }
 
-  public String getStartKey() {
+  public JsonNode getStartKey() {
     return startKey;
   }
 
-  public void setStartKey(String startKey) {
+  public void setStartKey(JsonNode startKey) {
     this.startKey = startKey;
   }
 
-  public String getEndKey() {
+  public JsonNode getEndKey() {
     return endKey;
   }
 
-  public void setEndKey(String endKey) {
+  public void setEndKey(JsonNode endKey) {
     this.endKey = endKey;
   }
 

@@ -38,7 +38,7 @@ import org.apache.commons.logging.LogFactory;
  * @author mbreese
  *
  */
-public class ViewResult extends Document {
+public class ViewResult {
 	private static final Log log = LogFactory.getLog(ViewResult.class);
 
   private static final String PROP_ROWS = "rows";
@@ -64,7 +64,9 @@ public class ViewResult extends Document {
 
     public Row(JsonNode origRow) {
       this.origRow = origRow;
-      this.id = origRow.get(ROW_PROP__ID).asText();
+      if (origRow.has(ROW_PROP__ID)) {
+        this.id = origRow.get(ROW_PROP__ID).asText();
+      }
       this.key = origRow.get(ROW_PROP__KEY);
       this.value = origRow.get(ROW_PROP__VAL);
     }
@@ -103,43 +105,56 @@ public class ViewResult extends Document {
   }
 
 
-	private ViewQuery calledViewQuery;
+	private ViewQuery query;
+  private ObjectNode result;
 
 	/**
 	 * Builds the ViewResults content from the given JSON content. (called only from Database.view())
 	 * This shouldn't be called by username code.
-	 * @param calledViewQuery
-	 * @param obj
+	 * @param query
+	 * @param result
 	 */
-	ViewResult(ViewQuery calledViewQuery, ObjectNode obj) {
-		super(obj);
-		this.calledViewQuery = calledViewQuery;
+	ViewResult(ViewQuery query, ObjectNode result) {
+		this.query = query;
+    this.result = result;
 	}
 
-  public List<Row> getRows() {
-    JsonNode jsonRows = getContent().get(PROP_ROWS);
+  public List<Row> convertJsonToRows() {
+    JsonNode jsonRows = result.get(PROP_ROWS);
     List<Row> rows = new ArrayList<>(jsonRows.size());
     for (JsonNode jsonRow : jsonRows) {
-      log.info(jsonRow.toString());
+//      log.info(jsonRow.toString());
       Row row = new Row(jsonRow);
       rows.add(row);
     }
     return rows;
   }
 
+  public int getNumReturnedRows() {
+    return result.get(PROP_ROWS).size();
+  }
+
   public Long getTotalRows() {
-    return getContent().get(PROP_TOTAL_ROWS).asLong();
+    return result.get(PROP_TOTAL_ROWS).asLong();
   }
 
   public Long getOffset() {
-    return getContent().get(PROP_OFFSET).asLong();
+    return result.get(PROP_OFFSET).asLong();
   }
 
-	/**
-	 * The new that created this results list.
-	 * @return
-	 */
-	public ViewQuery getView() {
-		return calledViewQuery;
-	}
+  public ViewQuery getQuery() {
+    return query;
+  }
+
+  public void setQuery(ViewQuery query) {
+    this.query = query;
+  }
+
+  public ObjectNode getResult() {
+    return result;
+  }
+
+  public void setResult(ObjectNode result) {
+    this.result = result;
+  }
 }
