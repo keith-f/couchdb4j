@@ -24,6 +24,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 package com.fourspaces.couchdb.util;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.UnsupportedEncodingException;
@@ -45,4 +47,9 @@ public class JSONUtils {
     return URLEncoder.encode(path, "utf-8").replaceAll("%2F", "/");    
   }
 
+  public static String toJsonText(JsonNode node) throws JsonProcessingException {
+    // Suggested by StackOverflow...
+    Object value = mapper.treeToValue(node, Object.class);
+    return mapper.writeValueAsString(value);
+  }
 }
