@@ -50,7 +50,9 @@ public class View {
 
 	protected String key;
 	protected String startKey;
+  protected String startKeyDocId;
 	protected String endKey;
+  protected String endKeyDocId;
 	protected Integer limit;
   protected StaleTypes staleType;
 	protected Boolean descending;
@@ -69,6 +71,27 @@ public class View {
 
   public View() {
   }
+
+  public View(View existing) {
+    this.key = existing.key;
+    this.startKey = existing.startKey;
+    this.startKeyDocId = existing.startKeyDocId;
+    this.endKey = existing.endKey;
+    this.endKeyDocId = existing.endKeyDocId;
+    this.limit = existing.limit;
+    this.staleType = existing.staleType;
+    this.descending = existing.descending;
+    this.skip = existing.skip;
+    this.group = existing.group;
+    this.groupLevel = existing.groupLevel;
+    this.reduce = existing.reduce;
+    this.includeDocs = existing.includeDocs;
+    this.inclusiveEnd = existing.inclusiveEnd;
+    this.updateSeq = existing.updateSeq;
+
+    this.fullName = existing.fullName;
+  }
+
 
   /**
 	 * Build a view given only a fullname ex: ("_add_docs", "_temp_view")
@@ -94,9 +117,15 @@ public class View {
 		if (startKey != null) {
 			queryString.append("startkey=").append(startKey).append("&");
 		}
+    if (startKeyDocId != null) {
+      queryString.append("startkey_docid=").append(startKeyDocId).append("&");
+    }
 		if (endKey != null) {
 			queryString.append("endkey=").append(endKey).append("&");
 		}
+    if (endKeyDocId != null) {
+      queryString.append("endkey_docid=").append(endKeyDocId).append("&");
+    }
     if (limit != null) {
       queryString.append("limit=").append(limit).append("&");
     }
@@ -246,5 +275,21 @@ public class View {
 
   public void setFullName(String fullName) {
     this.fullName = fullName;
+  }
+
+  public String getStartKeyDocId() {
+    return startKeyDocId;
+  }
+
+  public void setStartKeyDocId(String startKeyDocId) {
+    this.startKeyDocId = startKeyDocId;
+  }
+
+  public String getEndKeyDocId() {
+    return endKeyDocId;
+  }
+
+  public void setEndKeyDocId(String endKeyDocId) {
+    this.endKeyDocId = endKeyDocId;
   }
 }
