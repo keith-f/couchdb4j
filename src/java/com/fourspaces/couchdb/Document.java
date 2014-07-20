@@ -52,11 +52,7 @@ public class Document {
   public static final String DOC_PROP__ID = "_id";
   public static final String DOC_PROP__REV = "_rev";
 
-  public static final String ROW_PROP__ID = "id"; // If this document is part of a view result, use this property
-
   protected ObjectNode content;
-
-//	boolean loaded = false;
 
   /**
    * Create a new Document
@@ -83,24 +79,10 @@ public class Document {
    */
   public String getId() {
     return content.get(DOC_PROP__ID).asText();
-//    return content.optString(DOC_PROP__ID);
   }
 
   public void setId(String id) {
     content.put(DOC_PROP__ID, id);
-//    content.put(DOC_PROP__ID, id);
-  }
-
-  /**
-   * If this Document instance represents a row in a view query, this method returns the ID of the document that
-   * contains the data from which the row was generated.
-   *
-   * This method is only useful if:
-   * 1) this Document instance represents a view row;
-   * 2) the rows are the result of a 'map' query (document IDs for 'reduce' queries don't make sense).
-   */
-  public String getRowDocId() {
-    return content.get(ROW_PROP__ID).asText();
   }
 
   /**
@@ -123,12 +105,6 @@ public class Document {
    */
   public String getRev() {
     return content.get(DOC_PROP__REV).asText();
-//    return content.optString(DOC_PROP__REV);
-//    if (StringUtils.isNotBlank(content.optString("_rev"))) {
-//      return content.optString("_rev");
-//    } else {
-//      return content.optString("rev");  //FIXME ??
-//    }
   }
 
   public void setRev(String rev) {

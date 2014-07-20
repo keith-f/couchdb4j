@@ -47,6 +47,61 @@ public class ViewResults extends Document {
   private static final String PROP_TOTAL_ROWS = "total_rows";
   private static final String PROP_OFFSET = "offset";
 
+  // Rows from non-reduced results contain (and are sorted by) the ID of the document containing their source data.
+  private static final String ROW_PROP__ID = "id";
+  private static final String ROW_PROP__KEY = "key";
+  private static final String ROW_PROP__VAL = "value";
+
+  public static class Row {
+    private String id; // If this row is from a non-reduced query result, contains doc ID of source data
+    private JsonNode key;
+    private JsonNode value;
+
+    private JsonNode origRow; // Original, raw row
+
+    public Row() {
+    }
+
+    public Row(JsonNode origRow) {
+      this.origRow = origRow;
+      this.id = origRow.get(ROW_PROP__ID).asText();
+      this.key = origRow.get(ROW_PROP__KEY);
+      this.value = origRow.get(ROW_PROP__VAL);
+    }
+
+    public String getId() {
+      return id;
+    }
+
+    public void setId(String id) {
+      this.id = id;
+    }
+
+    public JsonNode getKey() {
+      return key;
+    }
+
+    public void setKey(JsonNode key) {
+      this.key = key;
+    }
+
+    public JsonNode getValue() {
+      return value;
+    }
+
+    public void setValue(JsonNode value) {
+      this.value = value;
+    }
+
+    public JsonNode getOrigRow() {
+      return origRow;
+    }
+
+    public void setOrigRow(JsonNode origRow) {
+      this.origRow = origRow;
+    }
+  }
+
 
 	private ViewQuery calledViewQuery;
 
@@ -60,27 +115,17 @@ public class ViewResults extends Document {
 		super(obj);
 		this.calledViewQuery = calledViewQuery;
 	}
-	
-	/**
-	 * Retrieves a list of documents that matched this View.
-	 * These documents only contain the data that the View has returned (not the full document).
-	 * <p>
-	 * You can load the remaining information from Document.reload();
-	 * 
-	 * @return
-	 */
-	public List<Document> getResults() {
-    JsonNode rows = getContent().get(PROP_ROWS);
-    List<Document> docs = new ArrayList<>(rows.size());
-    for (JsonNode row : rows) {
-			log.info(row.toString());
-			if (!row.isNull()) {
-				Document d = new Document((ObjectNode) row);
-				docs.add(d);
-			}
-		}
-		return docs;
-	}
+
+  public List<Row> getRows() {
+    JsonNode jsonRows = getContent().get(PROP_ROWS);
+    List<Row> rows = new ArrayList<>(jsonRows.size());
+    for (JsonNode jsonRow : jsonRows) {
+      log.info(jsonRow.toString());
+      Row row = new Row(jsonRow);
+      rows.add(row);
+    }
+    return rows;
+  }
 
   public Long getTotalRows() {
     return getContent().get(PROP_TOTAL_ROWS).asLong();
