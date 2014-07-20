@@ -32,7 +32,7 @@ package com.fourspaces.couchdb;
  * @author mbreese
  * @author Keith Flanagan - refactoring and adding new view query options
  */
-public class View {
+public class ViewQuery {
 
   public static final int GROUP_LEVEL_EXACT = -1;
 
@@ -71,12 +71,12 @@ public class View {
 //	protected String function;
 
 
-  public View() {
+  public ViewQuery() {
     // Defaults
     reduce = false;
   }
 
-  public View(View existing) {
+  public ViewQuery(ViewQuery existing) {
     this.key = existing.key;
     this.startKey = existing.startKey;
     this.startKeyDocId = existing.startKeyDocId;
@@ -101,7 +101,7 @@ public class View {
 	 * Build a view given only a fullname ex: ("_add_docs", "_temp_view")
 	 * @param fullname
 	 */
-	public View(String fullname) {
+	public ViewQuery(String fullname) {
 		this.fullName=fullname;
 	}
 

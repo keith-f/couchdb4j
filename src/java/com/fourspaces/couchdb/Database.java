@@ -21,7 +21,6 @@ import java.io.IOException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fourspaces.couchdb.util.JSONUtils;
 
 import static com.fourspaces.couchdb.util.JSONUtils.mapper;
 import static com.fourspaces.couchdb.util.JSONUtils.urlEncodePath;
@@ -114,7 +113,7 @@ public class Database {
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
   public ViewResults getAllDocuments() throws DatabaseException {
-    return view(new View("_all_docs"), false);
+    return view(new ViewQuery("_all_docs"), false);
   }
 
   /**
@@ -123,7 +122,7 @@ public class Database {
    * @return ViewResults - all design docs
    */
   public ViewResults getAllDesignDocuments() throws DatabaseException {
-    View v = new View("_all_docs");
+    ViewQuery v = new ViewQuery("_all_docs");
     v.startKey = "%22_design%2F%22";
     v.endKey = "%22_design0%22";
     v.includeDocs = Boolean.TRUE;
@@ -136,7 +135,7 @@ public class Database {
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
   public ViewResults getAllDocumentsWithCount(int limit) throws DatabaseException {
-    View v = new View("_all_docs");
+    ViewQuery v = new ViewQuery("_all_docs");
     v.setLimit(limit);
     return view(v, false);
   }
@@ -147,47 +146,47 @@ public class Database {
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
   public ViewResults getAllDocuments(int revision) throws DatabaseException {
-    return view(new View("_all_docs_by_seq?startkey=" + revision), false);
+    return view(new ViewQuery("_all_docs_by_seq?startkey=" + revision), false);
   }
 
   /**
    * Runs a named view on the database
    * This will run a view and apply any filtering that is requested (reverse, startkey, etc).
    *
-   * @param view
+   * @param viewQuery
    * @return
    */
-  public ViewResults view(View view) throws DatabaseException {
-    return view(view, true);
+  public ViewResults view(ViewQuery viewQuery) throws DatabaseException {
+    return view(viewQuery, true);
   }
 
   /**
    * Runs a view, appending "_view" to the request if isPermanentView is true.
    * *
    *
-   * @param view
+   * @param viewQuery
    * @param isPermanentView
    * @return
    */
-  private ViewResults view(final View view, final boolean isPermanentView) throws DatabaseException {
+  private ViewResults view(final ViewQuery viewQuery, final boolean isPermanentView) throws DatabaseException {
     String path;
     if (isPermanentView) {
-      String[] elements = view.getFullName().split("/");
+      String[] elements = viewQuery.getFullName().split("/");
       path =  "/" + this.name + "/" + ((elements.length < 2) ? elements[0] : DESIGN + elements[0] + VIEW + elements[1]);
     } else {
-      path =  "/" + this.name + "/" + view.getFullName();
+      path =  "/" + this.name + "/" + viewQuery.getFullName();
     }
 
     CouchResponse resp;
     try {
-      resp = session.get(path, view.getQueryString());
+      resp = session.get(path, viewQuery.getQueryString());
     } catch (SessionException e) {
       throw new DatabaseException("Database operation failed", e);
     }
     if (!resp.isOk()) {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
-    ViewResults results = new ViewResults(view, (ObjectNode) resp.getJsonBody());
+    ViewResults results = new ViewResults(viewQuery, (ObjectNode) resp.getJsonBody());
     return results;
 
   }
@@ -200,7 +199,7 @@ public class Database {
    */
 
   public ViewResults view(String fullname) throws DatabaseException {
-    return view(new View(fullname), true);
+    return view(new ViewQuery(fullname), true);
   }
 
   /**

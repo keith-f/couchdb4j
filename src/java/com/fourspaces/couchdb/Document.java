@@ -17,7 +17,6 @@
 package com.fourspaces.couchdb;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import static com.fourspaces.couchdb.util.JSONUtils.mapper;
@@ -167,12 +166,12 @@ public class Document {
    * @deprecated Not sure we need this...
    */
   @Deprecated //Is this method needed??
-  public View getView(String name) {
+  public ViewQuery getView(String name) {
 
     if (content.has("views")) {
       JsonNode views = content.get("views");
       if (views.has(name)) {
-        return new View(name);
+        return new ViewQuery(name);
       }
     }
     return null;

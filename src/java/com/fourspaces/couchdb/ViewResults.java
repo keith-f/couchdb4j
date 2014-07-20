@@ -24,8 +24,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import static com.fourspaces.couchdb.util.JSONUtils.mapper;
-
 /**
  * The results of a view request is just a specialized Document content.
  * You can use ViewResults to retrieve information about the results (such as the 
@@ -41,18 +39,26 @@ import static com.fourspaces.couchdb.util.JSONUtils.mapper;
  *
  */
 public class ViewResults extends Document {
-	Log log = LogFactory.getLog(ViewResults.class);
-	private View calledView;
+	private static final Log log = LogFactory.getLog(ViewResults.class);
+
+  private static final String PROP_ROWS = "rows";
+
+  //Only applicable to non-reduced views
+  private static final String PROP_TOTAL_ROWS = "total_rows";
+  private static final String PROP_OFFSET = "offset";
+
+
+	private ViewQuery calledViewQuery;
 
 	/**
 	 * Builds the ViewResults content from the given JSON content. (called only from Database.view())
 	 * This shouldn't be called by username code.
-	 * @param calledView
+	 * @param calledViewQuery
 	 * @param obj
 	 */
-	ViewResults(View calledView, ObjectNode obj) {
+	ViewResults(ViewQuery calledViewQuery, ObjectNode obj) {
 		super(obj);
-		this.calledView=calledView;
+		this.calledViewQuery = calledViewQuery;
 	}
 	
 	/**
@@ -64,23 +70,31 @@ public class ViewResults extends Document {
 	 * @return
 	 */
 	public List<Document> getResults() {
-    List<Document> docs = new ArrayList<>(getContent().size());
-    for (JsonNode row : getContent()) {
+    JsonNode rows = getContent().get(PROP_ROWS);
+    List<Document> docs = new ArrayList<>(rows.size());
+    for (JsonNode row : rows) {
 			log.info(row.toString());
 			if (!row.isNull()) {
 				Document d = new Document((ObjectNode) row);
 				docs.add(d);
 			}
 		}
-		return docs;	
-
+		return docs;
 	}
+
+  public Long getTotalRows() {
+    return getContent().get(PROP_TOTAL_ROWS).asLong();
+  }
+
+  public Long getOffset() {
+    return getContent().get(PROP_OFFSET).asLong();
+  }
 
 	/**
 	 * The new that created this results list.
 	 * @return
 	 */
-	public View getView() {
-		return calledView;
+	public ViewQuery getView() {
+		return calledViewQuery;
 	}
 }

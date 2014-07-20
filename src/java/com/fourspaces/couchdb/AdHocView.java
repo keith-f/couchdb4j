@@ -23,7 +23,7 @@ package com.fourspaces.couchdb;
  * @author mbreese
  *
  */
-public class AdHocView extends View {
+public class AdHocView extends ViewQuery {
   private String mapFunction;
   private String reduceFunction;
 
