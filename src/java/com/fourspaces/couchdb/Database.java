@@ -112,7 +112,7 @@ public class Database {
    *
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
-  public ViewResults getAllDocuments() throws DatabaseException {
+  public ViewResult getAllDocuments() throws DatabaseException {
     return view(new ViewQuery("_all_docs"), false);
   }
 
@@ -121,7 +121,7 @@ public class Database {
    *
    * @return ViewResults - all design docs
    */
-  public ViewResults getAllDesignDocuments() throws DatabaseException {
+  public ViewResult getAllDesignDocuments() throws DatabaseException {
     ViewQuery v = new ViewQuery("_all_docs");
     v.startKey = "%22_design%2F%22";
     v.endKey = "%22_design0%22";
@@ -134,7 +134,7 @@ public class Database {
    *
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
-  public ViewResults getAllDocumentsWithCount(int limit) throws DatabaseException {
+  public ViewResult getAllDocumentsWithCount(int limit) throws DatabaseException {
     ViewQuery v = new ViewQuery("_all_docs");
     v.setLimit(limit);
     return view(v, false);
@@ -145,7 +145,7 @@ public class Database {
    *
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
-  public ViewResults getAllDocuments(int revision) throws DatabaseException {
+  public ViewResult getAllDocuments(int revision) throws DatabaseException {
     return view(new ViewQuery("_all_docs_by_seq?startkey=" + revision), false);
   }
 
@@ -156,7 +156,7 @@ public class Database {
    * @param viewQuery
    * @return
    */
-  public ViewResults view(ViewQuery viewQuery) throws DatabaseException {
+  public ViewResult view(ViewQuery viewQuery) throws DatabaseException {
     return view(viewQuery, true);
   }
 
@@ -168,7 +168,7 @@ public class Database {
    * @param isPermanentView
    * @return
    */
-  private ViewResults view(final ViewQuery viewQuery, final boolean isPermanentView) throws DatabaseException {
+  private ViewResult view(final ViewQuery viewQuery, final boolean isPermanentView) throws DatabaseException {
     String path;
     if (isPermanentView) {
       String[] elements = viewQuery.getFullName().split("/");
@@ -186,7 +186,7 @@ public class Database {
     if (!resp.isOk()) {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
-    ViewResults results = new ViewResults(viewQuery, (ObjectNode) resp.getJsonBody());
+    ViewResult results = new ViewResult(viewQuery, (ObjectNode) resp.getJsonBody());
     return results;
 
   }
@@ -198,7 +198,7 @@ public class Database {
    * @return
    */
 
-  public ViewResults view(String fullname) throws DatabaseException {
+  public ViewResult view(String fullname) throws DatabaseException {
     return view(new ViewQuery(fullname), true);
   }
 
@@ -208,7 +208,7 @@ public class Database {
    * @param mapFunction - the Javascript function to use as the filter.
    * @return results
    */
-  public ViewResults adhoc(String mapFunction) throws DatabaseException {
+  public ViewResult adhoc(String mapFunction) throws DatabaseException {
     return adhoc(new AdHocView(mapFunction, null));
   }
 
@@ -219,7 +219,7 @@ public class Database {
    * @param view
    * @return
    */
-  public ViewResults adhoc(final AdHocView view) throws DatabaseException {
+  public ViewResult adhoc(final AdHocView view) throws DatabaseException {
     ObjectNode adHocBody = mapper.createObjectNode();
     adHocBody.put("map", view.getMapFunction());
 
@@ -233,7 +233,7 @@ public class Database {
     if (!resp.isOk()) {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
-    ViewResults results = new ViewResults(view, (ObjectNode) resp.getJsonBody());
+    ViewResult results = new ViewResult(view, (ObjectNode) resp.getJsonBody());
     return results;
   }
 

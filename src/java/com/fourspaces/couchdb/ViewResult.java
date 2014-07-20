@@ -38,8 +38,8 @@ import org.apache.commons.logging.LogFactory;
  * @author mbreese
  *
  */
-public class ViewResults extends Document {
-	private static final Log log = LogFactory.getLog(ViewResults.class);
+public class ViewResult extends Document {
+	private static final Log log = LogFactory.getLog(ViewResult.class);
 
   private static final String PROP_ROWS = "rows";
 
@@ -111,7 +111,7 @@ public class ViewResults extends Document {
 	 * @param calledViewQuery
 	 * @param obj
 	 */
-	ViewResults(ViewQuery calledViewQuery, ObjectNode obj) {
+	ViewResult(ViewQuery calledViewQuery, ObjectNode obj) {
 		super(obj);
 		this.calledViewQuery = calledViewQuery;
 	}
