@@ -34,6 +34,8 @@ package com.fourspaces.couchdb;
  */
 public class View {
 
+  public static final int GROUP_LEVEL_EXACT = -1;
+
   public static enum StaleTypes {
     OK ("ok"),                      // CouchDB will not refresh the view even if it is stale
     UPDATE_AFTER ("update_after");  // CouchDB will update the view after the stale result is returned (v1.1 or later)
@@ -70,6 +72,8 @@ public class View {
 
 
   public View() {
+    // Defaults
+    reduce = false;
   }
 
   public View(View existing) {
@@ -142,7 +146,11 @@ public class View {
       queryString.append("group=").append(String.valueOf(group).toLowerCase()).append("&");
     }
     if (groupLevel != null) {
-      queryString.append("group_level=").append(groupLevel).append("&");
+      if (groupLevel == -1) {
+        queryString.append("group_level=exact").append("&");
+      } else {
+        queryString.append("group_level=").append(groupLevel).append("&");
+      }
     }
     if (reduce != null) {
       queryString.append("reduce=").append(String.valueOf(reduce).toLowerCase()).append("&");
