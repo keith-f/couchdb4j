@@ -269,9 +269,10 @@ public class Database {
 
     try {
       if (doc.getId() == null || doc.getId().equals("")) {
-        doc.setId(resp.getJsonBody().get("_id").asText());
+//        log.info("Response: "+resp.getBody());
+        doc.setId(resp.getJsonBody().get("id").asText());  // Returned value is 'id' and NOT '_id'
       }
-      doc.setRev(resp.getJsonBody().asText("_rev"));
+      doc.setRev(resp.getJsonBody().asText("rev"));        // Returned value is 'rev' and NOT '_rev'
     } catch (Exception e) {
       throw new DatabaseException("Error reading JSON", e);
     }
