@@ -52,6 +52,14 @@ public class Document {
   public static final String DOC_PROP__ID = "_id";
   public static final String DOC_PROP__REV = "_rev";
 
+  /**
+   * Quite often, we need to differentiate different 'types' of documents when constructing a View. This field
+   * provides a place to store such information.
+   *
+   * This field is entirely optional - CouchDB doesn't use it in any way.
+   */
+  public static final String DOC_TYPE = "_doctype";
+
   protected ObjectNode content;
 
   /**
@@ -83,6 +91,14 @@ public class Document {
 
   public void setId(String id) {
     content.put(DOC_PROP__ID, id);
+  }
+
+  public String getDocType() {
+    return content.get(DOC_TYPE).asText();
+  }
+
+  public void setDocType(String docType) {
+    content.put(DOC_TYPE, docType);
   }
 
   /**
