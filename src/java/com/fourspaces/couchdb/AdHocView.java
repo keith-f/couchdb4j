@@ -23,9 +23,32 @@ package com.fourspaces.couchdb;
  * @author mbreese
  *
  */
-public class AdHocView extends View {
-	public AdHocView(String function) {
+public class AdHocView extends ViewQuery {
+  private String mapFunction;
+  private String reduceFunction;
+
+  public AdHocView() {
+  }
+
+  public AdHocView(String mapFunction, String reduceFunction) {
 		super("_temp_view");
-		this.function=function;
+		this.mapFunction=mapFunction;
+    this.reduceFunction=reduceFunction;
 	}
+
+  public String getMapFunction() {
+    return mapFunction;
+  }
+
+  public void setMapFunction(String mapFunction) {
+    this.mapFunction = mapFunction;
+  }
+
+  public String getReduceFunction() {
+    return reduceFunction;
+  }
+
+  public void setReduceFunction(String reduceFunction) {
+    this.reduceFunction = reduceFunction;
+  }
 }

@@ -19,10 +19,12 @@ package com.fourspaces.couchdb;
 import java.net.InetAddress;
 import java.net.URL;
 
-import net.sf.json.JSONObject;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import static com.fourspaces.couchdb.util.JSONUtils.mapper;
 
 /**
  * This class encapsulates the data for a replication task running on a couch server 
@@ -154,10 +156,10 @@ public class ReplicationTask extends CouchTask {
 	}
 	
 	/**
-	 * @return The JSON object representing this replication task. Null is returned upon failure.
+	 * @return The JSON content representing this replication task. Null is returned upon failure.
 	 */
-	public JSONObject getCreateRequest() {
-		final JSONObject object = new JSONObject();
+	public JsonNode getCreateRequest() {
+		final ObjectNode object = mapper.createObjectNode();
 		final String source = this.source.buildUrl();
 		final String destination = this.destination.buildUrl();
 		if(source == null || destination == null) {

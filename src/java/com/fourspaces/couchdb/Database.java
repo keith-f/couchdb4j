@@ -17,46 +17,63 @@
 package com.fourspaces.couchdb;
 
 import java.io.IOException;
-import com.fourspaces.couchdb.util.JSONUtils;
-import static com.fourspaces.couchdb.util.JSONUtils.urlEncodePath;
-import net.sf.json.*;
 
-import net.sf.json.util.JSONStringer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import static com.fourspaces.couchdb.util.JSONUtils.mapper;
+import static com.fourspaces.couchdb.util.JSONUtils.urlEncodePath;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
  * This represents a particular database on the CouchDB server
- * <p/>
- * Using this object, you can get/create/update/delete documents.
+ * <p>
+ * Using this content, you can get/create/update/delete documents.
  * You can also call views (named and adhoc) to query the underlying database.
  *
  * @author mbreese
+ * @author Keith Flanagan - added exception handling
  */
 public class Database {
-  Log log = LogFactory.getLog(Database.class);
+  private static final Log log = LogFactory.getLog(Database.class);
+
+  private static final String VIEW = "/_view/";
+  private static final String DESIGN = "_design/";
+  private static final String UPDATE = "/_update/";
+
   private final String name;
   private int documentCount;
   private int updateSeq;
 
   private Session session;
 
-  private static final String VIEW = "/_view/";
-  private static final String DESIGN = "_design/";
-  private static final String UPDATE = "/_update/";
+  /**
+   * C-tor only used by the Session content.  You'd never call this directly.
+   *
+   * @param json a JSON object describing the databse properties - it's name, number of documents, etc.
+   * @param session the session to use when performing document operations.
+   */
+  Database(JsonNode json, Session session) {
+    this.name = json.get("db_name").asText();
+    this.documentCount = json.get("doc_count").asInt();
+    this.updateSeq = json.get("update_seq").asInt();
 
+    this.session = session;
+  }
 
   /**
-   * C-tor only used by the Session object.  You'd never call this directly.
-   *
-   * @param json
+   * A constructor to use when database metadata is not available or has not been retreived.
+   * @param dbName
    * @param session
    */
-  Database(JSONObject json, Session session) {
-    name = json.getString("db_name");
-    documentCount = json.getInt("doc_count");
-    updateSeq = json.getInt("update_seq");
+  Database(String dbName, Session session) {
+    this.name = dbName;
+    this.documentCount = -1;
+    this.updateSeq = -1;
 
     this.session = session;
   }
@@ -73,7 +90,7 @@ public class Database {
   /**
    * The number of documents in the database <b>at the time that it was retrieved from the session</b>
    * This number probably isn't accurate after the initial load... so if you want an accurate
-   * assessment, call Session.getDatabase() again to reload a new database object.
+   * assessment, call Session.getDatabase() again to reload a new database content.
    *
    * @return
    */
@@ -85,7 +102,6 @@ public class Database {
    * The update seq from the initial database load.  The update sequence is the 'revision id' of an entire database. Useful for getting all documents in a database since a certain revision
    *
    * @return
-   * @see getAllDocuments()
    */
   public int getUpdateSeq() {
     return updateSeq;
@@ -96,21 +112,19 @@ public class Database {
    *
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
-  public ViewResults getAllDocuments() {
-    return view(new View("_all_docs"), false);
+  public ViewResult getAllDocuments() throws DatabaseException {
+    return view(new ViewQuery("_all_docs"), false);
   }
 
   /**
    * Gets all design documents
    *
    * @return ViewResults - all design docs
-   */     
-  public ViewResults getAllDesignDocuments() {
-      View v = new View("_all_docs");
-      v.startKey = "%22_design%2F%22";
-      v.endKey = "%22_design0%22";
-      v.includeDocs = Boolean.TRUE;
-      return view(v, false);
+   */
+  public ViewResult getAllDesignDocuments() throws DatabaseException {
+    ViewQuery v = new ViewQuery("_design_docs");
+    v.includeDocs = Boolean.TRUE;
+    return view(v, false);
   }
 
   /**
@@ -118,9 +132,9 @@ public class Database {
    *
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
-  public ViewResults getAllDocumentsWithCount(int count) {
-    View v = new View("_all_docs");
-    v.setCount(count);
+  public ViewResult getAllDocumentsWithCount(int limit) throws DatabaseException {
+    ViewQuery v = new ViewQuery("_all_docs");
+    v.setLimit(limit);
     return view(v, false);
   }
 
@@ -129,46 +143,51 @@ public class Database {
    *
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
-  public ViewResults getAllDocuments(int revision) {
-    return view(new View("_all_docs_by_seq?startkey=" + revision), false);
+  public ViewResult getAllDocuments(int revision) throws DatabaseException {
+    return view(new ViewQuery("_all_docs_by_seq?startkey=" + revision), false);
   }
 
   /**
    * Runs a named view on the database
    * This will run a view and apply any filtering that is requested (reverse, startkey, etc).
    *
-   * @param view
+   * @param viewQuery
    * @return
    */
-  public ViewResults view(View view) {
-    return view(view, true);
+  public ViewResult view(ViewQuery viewQuery) throws DatabaseException {
+    return view(viewQuery, true);
   }
 
   /**
    * Runs a view, appending "_view" to the request if isPermanentView is true.
    * *
    *
-   * @param view
+   * @param viewQuery
    * @param isPermanentView
    * @return
    */
-  private ViewResults view(final View view, final boolean isPermanentView) {
-    String url = null;
+  private ViewResult view(final ViewQuery viewQuery, final boolean isPermanentView) throws DatabaseException {
+    String path;
     if (isPermanentView) {
-      String[] elements = view.getFullName().split("/");
-      url = this.name + "/" + ((elements.length < 2) ? elements[0] : DESIGN + elements[0] + VIEW + elements[1]);
-    }
-    else {
-      url = this.name + "/" + view.getFullName();
+      String[] elements = viewQuery.getFullName().split("/");
+      path =  "/" + this.name + "/" + ((elements.length < 2) ? elements[0] : DESIGN + elements[0] + VIEW + elements[1]);
+    } else {
+      path =  "/" + this.name + "/" + viewQuery.getFullName();
     }
 
-    CouchResponse resp = session.get(url, view.getQueryString());
-    if (resp.isOk()) {
-      ViewResults results = new ViewResults(view, resp.getBodyAsJSONObject());
-      results.setDatabase(this);
-      return results;
+    CouchResponse resp;
+    try {
+      resp = session.get(path, viewQuery.getQueryString());
+    } catch (SessionException e) {
+      throw new DatabaseException("Database operation failed", e);
+    } catch (ViewQueryCompilationException e) {
+      throw new DatabaseException("Failed to create query URL", e);
     }
-    return null;
+    if (!resp.isOk()) {
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
+    }
+    ViewResult results = new ViewResult(viewQuery, (ObjectNode) resp.getJsonBody());
+    return results;
 
   }
 
@@ -179,88 +198,85 @@ public class Database {
    * @return
    */
 
-  public ViewResults view(String fullname) {
-    return view(new View(fullname), true);
+  public ViewResult view(String fullname) throws DatabaseException {
+    return view(new ViewQuery(fullname), true);
   }
 
   /**
    * Runs an ad-hoc view from a string
    *
-   * @param function - the Javascript function to use as the filter.
+   * @param mapFunction - the Javascript function to use as the filter.
    * @return results
    */
-  public ViewResults adhoc(String function) {
-    return adhoc(new AdHocView(function));
+  public ViewResult adhoc(String mapFunction) throws DatabaseException {
+    return adhoc(new AdHocView(mapFunction, null));
   }
 
   /**
-   * Runs an ad-hoc view from an AdHocView object.  You probably won't use this much, unless
+   * Runs an ad-hoc view from an AdHocView content.  You probably won't use this much, unless
    * you want to add filtering to the view (reverse, startkey, etc...)
    *
    * @param view
    * @return
    */
-  public ViewResults adhoc(final AdHocView view) {
+  public ViewResult adhoc(final AdHocView view) throws DatabaseException {
+    ObjectNode adHocBody = mapper.createObjectNode();
+    adHocBody.put("map", view.getMapFunction());
 
 
-    String adHocBody = new JSONStringer()
-        .object()
-          .key("map").value(JSONUtils.stringSerializedFunction(view.getFunction()))
-        .endObject()
-        .toString();
-    
-    // Bugfix - include query string for adhoc views to support
-    // additional view options (setLimit, etc)
-    CouchResponse resp = session.post(name + "/_temp_view", adHocBody, view.getQueryString());
-    if (resp.isOk()) {
-      ViewResults results = new ViewResults(view, resp.getBodyAsJSONObject());
-      results.setDatabase(this);
-      return results;
+    CouchResponse resp;
+    try {
+      resp = session.post(name + "/_temp_view", adHocBody.toString(), view.getQueryString());
+    } catch (SessionException e) {
+      throw new DatabaseException("Database operation failed", e);
+    } catch (ViewQueryCompilationException e) {
+      throw new DatabaseException("Failed to create query URL", e);
     }
-    else {
-      log.warn("Error executing view - " + resp.getErrorId() + " " + resp.getErrorReason());
+    if (!resp.isOk()) {
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
-    return null;
+    ViewResult results = new ViewResult(view, (ObjectNode) resp.getJsonBody());
+    return results;
   }
 
   /**
    * Save a document at the given _id
-   * <p/>
+   * <p>
    * if the docId is null or empty, then this performs a POST to the database and retrieves a new
    * _id.
-   * <p/>
+   * <p>
    * Otherwise, a PUT is called.
-   * <p/>
-   * Either way, a new _id and _rev are retrieved and updated in the Document object
+   * <p>
+   * Either way, a new _id and _rev are retrieved and updated in the Document content
    *
    * @param doc
    * @param docId
    */
-  public void saveDocument(Document doc, String docId) throws IOException {
+  public void saveDocument(Document doc, String docId) throws DatabaseException {
     CouchResponse resp;
-    if (docId == null || docId.equals("")) {
-      resp = session.post(name, doc.getJSONObject().toString());
+    try {
+      if (docId == null || docId.equals("")) {
+        resp = session.post(name, doc.getContent().toString());
+      } else {
+        resp = session.put(name + "/" + urlEncodePath(docId), doc.getContent().toString());
+      }
+    } catch (SessionException | IOException e) {
+      throw new DatabaseException("Database operation failed", e);
     }
-    else {
-      resp = session.put(name + "/" + urlEncodePath(docId), doc.getJSONObject().toString());
+    if (!resp.isOk()) {
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
 
-    if (resp.isOk()) {
-      try {
-        if (doc.getId() == null || doc.getId().equals("")) {
-          doc.setId(resp.getBodyAsJSONObject().getString("id"));
-        }
-        doc.setRev(resp.getBodyAsJSONObject().getString("rev"));
+    try {
+      if (doc.getId() == null || doc.getId().equals("")) {
+//        log.info("Response: "+resp.getBody());
+        doc.setId(resp.getJsonBody().get("id").asText());  // Returned value is 'id' and NOT '_id'
       }
-      catch (JSONException e) {
-        e.printStackTrace();
-      }
-      doc.setDatabase(this);
+      doc.setRev(resp.getJsonBody().asText("rev"));        // Returned value is 'rev' and NOT '_rev'
+    } catch (Exception e) {
+      throw new DatabaseException("Error reading JSON", e);
     }
-    else {
-      log.warn("Error adding document - " + resp.getErrorId() + " " + resp.getErrorReason());
-      System.err.println("RESP: " + resp);
-    }
+//    doc.setDatabase(this);
   }
 
   /**
@@ -268,40 +284,46 @@ public class Database {
    *
    * @param doc
    */
-  public void saveDocument(Document doc) throws IOException {
+  public void saveDocument(Document doc) throws DatabaseException {
     saveDocument(doc, doc.getId());
   }
 
-  public void bulkSaveDocuments(Document[] documents) throws IOException {
-    CouchResponse resp = null;
-
-    resp = session.post(name + "/_bulk_docs", new JSONObject().accumulate("docs", documents).toString());
-
-    if (resp.isOk()) {
-      // TODO set Ids and revs and name (db)
-      final JSONArray respJsonArray = resp.getBodyAsJSONArray();
-      JSONObject respObj = null;
-      String id = null;
-      String rev = null;
-      for (int i = 0; i < documents.length; i++) {
-        respObj = respJsonArray.getJSONObject(i);
-        id = respObj.getString("id");
-        rev = respObj.getString("rev");
-        if (StringUtils.isBlank(documents[i].getId())) {
-          documents[i].setId(id);
-          documents[i].setRev(rev);
-        }
-        else if (StringUtils.isNotBlank(documents[i].getId()) && documents[i].getId().equals(id)) {
-          documents[i].setRev(rev);
-        }
-        else {
-          log.warn("returned bulk save array in incorrect order, saved documents do not have updated rev or ids");
-        }
-        documents[i].setDatabase(this);
+  public void bulkSaveDocuments(Document[] documents) throws DatabaseException {
+    CouchResponse resp;
+    try {
+      ObjectNode object = mapper.createObjectNode();
+      ArrayNode docsArr = object.putArray("docs");
+      for (Document doc : documents) {
+        docsArr.addPOJO(doc);
       }
+
+      resp = session.post(name + "/_bulk_docs", object.toString());
+    } catch (SessionException e) {
+      throw new DatabaseException("Database operation failed", e);
     }
-    else {
-      log.warn("Error bulk saving documents - " + resp.getErrorId() + " " + resp.getErrorReason());
+    if (!resp.isOk()) {
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
+    }
+    // TODO set Ids and revs and name (db)
+//    final JSONArray respJsonArray = resp.getBodyAsJSONArray();
+    final ArrayNode respJsonArray = (ArrayNode) resp.getJsonBody();
+
+    int idx = 0;
+    for (JsonNode element : respJsonArray) {
+//    for (int i = 0; i < documents.length; i++) {
+//      JSONObject respObj = respJsonArray.getJSONObject(i);
+      String id = element.get("_id").asText();
+      String rev = element.get("_rev").asText();
+      if (StringUtils.isBlank(documents[idx].getId())) {
+        documents[idx].setId(id);
+        documents[idx].setRev(rev);
+      } else if (StringUtils.isNotBlank(documents[idx].getId()) && documents[idx].getId().equals(id)) {
+        documents[idx].setRev(rev);
+      } else {
+        log.warn("returned bulk save array in incorrect order, saved documents do not have updated rev or ids");
+        throw new DatabaseException("returned bulk save array in incorrect order, saved documents do not have updated rev or ids");
+      }
+      idx++;
     }
   }
 
@@ -311,7 +333,7 @@ public class Database {
    * @param id
    * @return
    */
-  public Document getDocument(String id) throws IOException {
+  public Document getDocument(String id) throws DatabaseException {
     return getDocument(id, null, false);
   }
 
@@ -322,7 +344,7 @@ public class Database {
    * @param id
    * @return
    */
-  public Document getDocumentWithRevisions(String id) throws IOException {
+  public Document getDocumentWithRevisions(String id) throws DatabaseException {
     return getDocument(id, null, true);
   }
 
@@ -333,40 +355,41 @@ public class Database {
    * @param revision
    * @return
    */
-  public Document getDocument(String id, String revision) throws IOException {
+  public Document getDocument(String id, String revision) throws DatabaseException {
     return getDocument(id, revision, false);
   }
 
   /**
-   * Retrieves a specific document revision and (optionally) asks for a list of all revisions
+   * Retrieves a specific document revision and (optionally) asks for a list of all revisions.
    *
    * @param id
    * @param revision
    * @param showRevisions
-   * @return the document
+   * @return either the request document, or NULL if the request succeeded, but the document was not found
    */
-  public Document getDocument(String id, String revision, boolean showRevisions) throws IOException {
+  public Document getDocument(String id, String revision, boolean showRevisions) throws DatabaseException {
     CouchResponse resp;
-    Document doc = null;
-    if (revision != null && showRevisions) {
-      resp = session.get(name + "/" + urlEncodePath(id), "rev=" + revision + "&full=true");
+    try {
+      if (revision != null && showRevisions) {
+        resp = session.get(name + "/" + urlEncodePath(id), "rev=" + revision + "&full=true");
+      } else if (revision != null && !showRevisions) {
+        resp = session.get(name + "/" + urlEncodePath(id), "rev=" + revision);
+      } else if (revision == null && showRevisions) {
+        resp = session.get(name + "/" + urlEncodePath(id), "revs=true");
+      } else {
+        resp = session.get(name + "/" + urlEncodePath(id));
+      }
+    } catch (SessionException | IOException e) {
+      throw new DatabaseException("Database operation failed", e);
     }
-    else if (revision != null && !showRevisions) {
-      resp = session.get(name + "/" + urlEncodePath(id), "rev=" + revision);
+    if (resp.getStatusCode() == 404) {
+      // Request succeeded, but no such document. Return NULL
+      return null;
+    } else if (!resp.isOk()) {
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId()
+          + "; Error text: " + resp.getPhrase() + "; Reason: " + resp.getErrorReason());
     }
-    else if (revision == null && showRevisions) {
-      resp = session.get(name + "/" + urlEncodePath(id), "revs=true");
-    }
-    else {
-      resp = session.get(name + "/" + urlEncodePath(id));
-    }
-    if (resp.isOk()) {
-      doc = new Document(resp.getBodyAsJSONObject());
-      doc.setDatabase(this);
-    }
-    else {
-      log.warn("Error getting document - " + resp.getErrorId() + " " + resp.getErrorReason());
-    }
+    Document doc = new Document((ObjectNode) resp.getJsonBody());
     return doc;
   }
 
@@ -377,24 +400,23 @@ public class Database {
    * @return was the delete successful?
    * @throws IllegalArgumentException for blank document id
    */
-  public boolean deleteDocument(Document d) throws IOException {
-
+  public void deleteDocument(Document d) throws DatabaseException {
     if (StringUtils.isBlank(d.getId())) {
       throw new IllegalArgumentException("cannot delete document, doc id is empty");
     }
 
-    CouchResponse resp = session.delete(name + "/" + urlEncodePath(d.getId()) + "?rev=" + d.getRev());
-
-    if (resp.isOk()) {
-      return true;
+    CouchResponse resp;
+    try {
+      resp = session.delete(name + "/" + urlEncodePath(d.getId()) + "?rev=" + d.getRev());
+    } catch (SessionException | IOException e) {
+      throw new DatabaseException("Database operation failed", e);
     }
-    else {
-      log.warn("Error deleting document - "+resp.getErrorId()+" "+resp.getErrorReason());
-			return false;
-		}
-		
-	}
-	
+    if (!resp.isOk()) {
+      // Document was probably not deleted?
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
+    }
+  }
+
   /**
    * Gets attachment
    *
@@ -402,94 +424,109 @@ public class Database {
    * @param attachment attachment body
    * @return attachment body
    */
-    public String getAttachment(String id, String attachment) throws IOException {
-        CouchResponse resp = session.get(name + "/" + urlEncodePath(id) + "/" + attachment);
-        return resp.getBody();
+  public String getAttachment(String id, String attachment) throws DatabaseException {
+    CouchResponse resp;
+    try {
+      resp = session.get(name + "/" + urlEncodePath(id) + "/" + attachment);
+    } catch (SessionException | IOException e) {
+      throw new DatabaseException("Database operation failed", e);
     }
+    if (!resp.isOk()) {
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
+    }
+
+    return resp.getBody();
+  }
 
   /**
    * Puts attachment to the doc
    *
    * @param id
-   * @param fname attachment name
-   * @param ctype content type
+   * @param fname      attachment name
+   * @param ctype      content type
    * @param attachment attachment body
    * @return was the PUT successful?
    */
-    public String putAttachment(String id, String fname, String ctype, String attachment) throws IOException {
-        CouchResponse resp = session.put(name + "/" + urlEncodePath(id) + "/" + fname, ctype, attachment);
-        return resp.getBody();
+  public String putAttachment(String id, String fname, String ctype, String attachment) throws DatabaseException {
+    CouchResponse resp;
+    try {
+      resp = session.put(name + "/" + urlEncodePath(id) + "/" + fname, ctype, attachment);
+    } catch (SessionException | IOException e) {
+      throw new DatabaseException("Database operation failed", e);
     }
-    
+    if (!resp.isOk()) {
+      // Document was probably not deleted?
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
+    }
+
+    return resp.getBody();
+  }
+
   /**
    * Update an existing document using a document update handler. Returns false if there is a failure
    * making the PUT/POST or there is a problem with the CouchResponse.
-   * @author rwilson
+   *
    * @param update
    * @return
+   * @author rwilson
    */
-    public boolean updateDocument(Update update) {
-      if ((update == null) || (update.getDocId() == null) || (update.getDocId().equals(""))) {
-        return false;
-      }
-      
-      String url = null;
-      
-      String[] elements = update.getName().split("/");
-      url = this.name + "/" + ((elements.length < 2) ? elements[0] : DESIGN + elements[0] + UPDATE + elements[1]) + "/" + update.getDocId();
-      
-      if (update.getMethodPOST()) {
-        try { 
-          // Invoke the POST method passing the parameters in the body
-          CouchResponse resp = session.post(url, "application/x-www-form-urlencoded", update.getURLFormEncodedString(), null);
-          return resp.isOk();
-        } catch (Exception e) {
-          return false;
-        }        
-      } else {
-        try {
-          // Invoke the PUT method passing the parameters as a query string
-          CouchResponse resp = session.put(url, null, null, update.getQueryString());
-          return resp.isOk();
-        } catch (Exception e) {
-          return false;
-        }        
-      }
+  public void updateDocument(Update update) throws DatabaseException {
+    if ((update == null) || (update.getDocId() == null) || (update.getDocId().equals(""))) {
+      throw new DatabaseException("Update or the document ID was NULL or empty string!");
     }
-    
-    /**
-     * Update an existing document using a document update handler and return the message body.
-     * Returns null if the is problem with the PUT/POST or CouchResponse.
-     * @author rwilson
-     * @param update
-     * @return
-     */
-      public String updateDocumentWithResponse(Update update) {
-        if ((update == null) || (update.getDocId() == null) || (update.getDocId().equals(""))) {
-          return "";
-        }
-        
-        String url = null;
-        
-        String[] elements = update.getName().split("/");
-        url = this.name + "/" + ((elements.length < 2) ? elements[0] : DESIGN + elements[0] + UPDATE + elements[1]) + "/" + update.getDocId();
-        
-        if (update.getMethodPOST()) {
-          try {
-            // Invoke the POST method passing the parameters in the body
-            CouchResponse resp = session.post(url, "application/x-www-form-urlencoded", update.getURLFormEncodedString(), null);
-            return resp.getBody();
-          } catch (Exception e) {
-            return null;
-          }
-        } else {
-          try {
-            // Invoke the PUT method passing the parameters as a query string
-            CouchResponse resp = session.put(url, null, null, update.getQueryString());
-            return resp.getBody();
-          } catch (Exception e) {
-            return null;
-          }
-        }
+
+    String[] elements = update.getName().split("/");
+    String url = this.name + "/" + ((elements.length < 2) ? elements[0] : DESIGN + elements[0] + UPDATE + elements[1]) + "/" + update.getDocId();
+
+    CouchResponse resp;
+    try {
+      if (update.getMethodPOST()) {
+        // Invoke the POST method passing the parameters in the body
+        resp = session.post(url, "application/x-www-form-urlencoded", update.getURLFormEncodedString(), null);
+      } else {
+        // Invoke the PUT method passing the parameters as a query string
+        resp = session.put(url, null, null, update.getQueryString());
       }
+    } catch (SessionException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+    if (!resp.isOk()) {
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
+    }
+  }
+
+  /**
+   * Update an existing document using a document update handler and return the message body.
+   * Returns null if the is problem with the PUT/POST or CouchResponse.
+   *
+   * @param update
+   * @return
+   * @author rwilson
+   */
+  public String updateDocumentWithResponse(Update update) throws DatabaseException {
+    if ((update == null) || (update.getDocId() == null) || (update.getDocId().equals(""))) {
+      throw new DatabaseException("Update or the document ID was NULL or empty string!");
+    }
+
+    String[] elements = update.getName().split("/");
+    String url = this.name + "/" + ((elements.length < 2) ? elements[0] : DESIGN + elements[0] + UPDATE + elements[1]) + "/" + update.getDocId();
+
+    CouchResponse resp;
+    try {
+      if (update.getMethodPOST()) {
+        // Invoke the POST method passing the parameters in the body
+        resp = session.post(url, "application/x-www-form-urlencoded", update.getURLFormEncodedString(), null);
+      } else {
+        // Invoke the PUT method passing the parameters as a query string
+        resp = session.put(url, null, null, update.getQueryString());
+      }
+    } catch (SessionException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+    if (!resp.isOk()) {
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
+    }
+    return resp.getBody();
+
+  }
 }
