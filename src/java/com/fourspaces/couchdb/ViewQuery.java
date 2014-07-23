@@ -52,34 +52,44 @@ public class ViewQuery {
     }
   }
 
+  private String designDocName;   // eg: _design/Foo
+  private String viewName;        // eg: my_view
 
-	protected String key;
-	protected JsonNode startKey;
-  protected String startKeyDocId;
-	protected JsonNode endKey;
-  protected String endKeyDocId;
-	protected Integer limit;
-  protected StaleTypes staleType;
-	protected Boolean descending;
-	protected Boolean skip;
-  protected Boolean group;      // group=true effectively sets groupLevel=999 (i.e., exact)
-  protected Integer groupLevel;
-  protected Boolean reduce;
-	protected Boolean includeDocs;
-  protected Boolean inclusiveEnd;
-  protected Boolean updateSeq;
-
-	protected String fullName;
-//	protected Document document;
-//	protected String function;
-
+  private String key;
+  private JsonNode startKey;
+  private String startKeyDocId;
+  private JsonNode endKey;
+  private String endKeyDocId;
+  private Integer limit;
+  private StaleTypes staleType;
+  private Boolean descending;
+  private Boolean skip;
+  private Boolean group;      // group=true effectively sets groupLevel=999 (i.e., exact)
+  private Integer groupLevel;
+  private Boolean reduce;
+  private Boolean includeDocs;
+  private Boolean inclusiveEnd;
+  private Boolean updateSeq;
 
   public ViewQuery() {
     // Defaults
     reduce = false;
   }
 
+  public ViewQuery(String designDocName) {
+    this();
+    this.designDocName = designDocName;
+  }
+
+  public ViewQuery(String designDocName, String viewName) {
+    this();
+    this.designDocName = designDocName;
+    this.viewName = viewName;
+  }
+
   public ViewQuery(ViewQuery existing) {
+    this.designDocName = existing.designDocName;
+    this.viewName = existing.viewName;
     this.key = existing.key;
     this.startKey = existing.startKey;
     this.startKeyDocId = existing.startKeyDocId;
@@ -95,19 +105,7 @@ public class ViewQuery {
     this.includeDocs = existing.includeDocs;
     this.inclusiveEnd = existing.inclusiveEnd;
     this.updateSeq = existing.updateSeq;
-
-    this.fullName = existing.fullName;
   }
-
-
-  /**
-	 * Build a view given only a fullname ex: ("_add_docs", "_temp_view")
-	 * @param fullname
-	 */
-	public ViewQuery(String fullname) {
-		this.fullName=fullname;
-	}
-
 
 	/**
 	 * Based upon settings, builds the queryString to add to the URL for this view.
@@ -180,6 +178,21 @@ public class ViewQuery {
 		return queryString.toString();
 	}
 
+  public String getDesignDocName() {
+    return designDocName;
+  }
+
+  public void setDesignDocName(String designDocName) {
+    this.designDocName = designDocName;
+  }
+
+  public String getViewName() {
+    return viewName;
+  }
+
+  public void setViewName(String viewName) {
+    this.viewName = viewName;
+  }
 
   public String getKey() {
     return key;
@@ -283,14 +296,6 @@ public class ViewQuery {
 
   public void setUpdateSeq(Boolean updateSeq) {
     this.updateSeq = updateSeq;
-  }
-
-  public String getFullName() {
-    return fullName;
-  }
-
-  public void setFullName(String fullName) {
-    this.fullName = fullName;
   }
 
   public String getStartKeyDocId() {

@@ -113,7 +113,7 @@ public class Database {
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
   public ViewResult getAllDocuments() throws DatabaseException {
-    return view(new ViewQuery("_all_docs"), false);
+    return view(new ViewQuery("_all_docs"));
   }
 
   /**
@@ -123,8 +123,8 @@ public class Database {
    */
   public ViewResult getAllDesignDocuments() throws DatabaseException {
     ViewQuery v = new ViewQuery("_design_docs");
-    v.includeDocs = Boolean.TRUE;
-    return view(v, false);
+    v.setIncludeDocs(Boolean.TRUE);
+    return view(v);
   }
 
   /**
@@ -135,7 +135,7 @@ public class Database {
   public ViewResult getAllDocumentsWithCount(int limit) throws DatabaseException {
     ViewQuery v = new ViewQuery("_all_docs");
     v.setLimit(limit);
-    return view(v, false);
+    return view(v);
   }
 
   /**
@@ -144,35 +144,23 @@ public class Database {
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
   public ViewResult getAllDocuments(int revision) throws DatabaseException {
-    return view(new ViewQuery("_all_docs_by_seq?startkey=" + revision), false);
+    return view(new ViewQuery("_all_docs_by_seq?startkey=" + revision));
   }
 
-  /**
-   * Runs a named view on the database
-   * This will run a view and apply any filtering that is requested (reverse, startkey, etc).
-   *
-   * @param viewQuery
-   * @return
-   */
-  public ViewResult view(ViewQuery viewQuery) throws DatabaseException {
-    return view(viewQuery, true);
-  }
 
   /**
-   * Runs a view, appending "_view" to the request if isPermanentView is true.
+   * Runs a view, appending "_view" to the request if a view name is specified.
    * *
    *
    * @param viewQuery
-   * @param isPermanentView
    * @return
    */
-  private ViewResult view(final ViewQuery viewQuery, final boolean isPermanentView) throws DatabaseException {
+  public ViewResult view(final ViewQuery viewQuery) throws DatabaseException {
     String path;
-    if (isPermanentView) {
-      String[] elements = viewQuery.getFullName().split("/");
-      path =  "/" + this.name + "/" + ((elements.length < 2) ? elements[0] : DESIGN + elements[0] + VIEW + elements[1]);
+    if (viewQuery.getViewName() != null) {
+      path =  "/" + this.name + "/" + viewQuery.getDesignDocName() + VIEW + viewQuery.getViewName();
     } else {
-      path =  "/" + this.name + "/" + viewQuery.getFullName();
+      path =  "/" + this.name + "/" + viewQuery.getDesignDocName();
     }
 
     CouchResponse resp;
@@ -191,16 +179,6 @@ public class Database {
 
   }
 
-  /**
-   * Runs a named view <i>Not currently working in CouchDB code</i>
-   *
-   * @param fullname - the fullname (including the document name) ex: foodoc:viewname
-   * @return
-   */
-
-  public ViewResult view(String fullname) throws DatabaseException {
-    return view(new ViewQuery(fullname), true);
-  }
 
   /**
    * Runs an ad-hoc view from a string
