@@ -86,7 +86,7 @@ public class Document {
    * @return
    */
   public String getId() {
-    return content.get(DOC_PROP__ID).asText();
+    return content.has(DOC_PROP__ID) ? content.get(DOC_PROP__ID).asText() : null;
   }
 
   public void setId(String id) {
@@ -94,7 +94,7 @@ public class Document {
   }
 
   public String getDocType() {
-    return content.get(DOC_TYPE).asText();
+    return content.has(DOC_TYPE) ? content.get(DOC_TYPE).asText() : null;
   }
 
   public void setDocType(String docType) {
@@ -120,7 +120,7 @@ public class Document {
    * @return
    */
   public String getRev() {
-    return content.get(DOC_PROP__REV).asText();
+    return content.has(DOC_PROP__REV) ? content.get(DOC_PROP__REV).asText() : null;
   }
 
   public void setRev(String rev) {
