@@ -113,7 +113,7 @@ public class Database {
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
   public ViewResult getAllDocuments() throws DatabaseException {
-    return view(new ViewQuery("_all_docs"));
+    return queryView(new ViewQuery("_all_docs"));
   }
 
   /**
@@ -124,7 +124,7 @@ public class Database {
   public ViewResult getAllDesignDocuments() throws DatabaseException {
     ViewQuery v = new ViewQuery("_design_docs");
     v.setIncludeDocs(Boolean.TRUE);
-    return view(v);
+    return queryView(v);
   }
 
   /**
@@ -135,7 +135,7 @@ public class Database {
   public ViewResult getAllDocumentsWithCount(int limit) throws DatabaseException {
     ViewQuery v = new ViewQuery("_all_docs");
     v.setLimit(limit);
-    return view(v);
+    return queryView(v);
   }
 
   /**
@@ -144,7 +144,7 @@ public class Database {
    * @return ViewResults - the results of the view... this can be iterated over to get each document.
    */
   public ViewResult getAllDocuments(int revision) throws DatabaseException {
-    return view(new ViewQuery("_all_docs_by_seq?startkey=" + revision));
+    return queryView(new ViewQuery("_all_docs_by_seq?startkey=" + revision));
   }
 
 
@@ -155,7 +155,7 @@ public class Database {
    * @param viewQuery
    * @return
    */
-  public ViewResult view(final ViewQuery viewQuery) throws DatabaseException {
+  public ViewResult queryView(final ViewQuery viewQuery) throws DatabaseException {
     String path;
     if (viewQuery.getViewName() != null) {
       path =  "/" + this.name + "/" + viewQuery.getDesignDocName() + VIEW + viewQuery.getViewName();

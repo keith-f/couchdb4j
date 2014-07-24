@@ -155,7 +155,7 @@ public class PageableView implements Iterable<PageableView.Page> {
           query.setStartKeyDocId(currentPage.getNextStartKeyDocId());
         }
 
-        ViewResult result = db.view(query);
+        ViewResult result = db.queryView(query);
         List<ViewResult.Row> resultRows = result.convertJsonToRows();
 
 
