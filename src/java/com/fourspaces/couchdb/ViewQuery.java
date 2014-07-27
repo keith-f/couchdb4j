@@ -120,7 +120,6 @@ public class ViewQuery {
 			queryString.append("key=").append(key).append("&");
 		}
 		if (startKey != null) {
-
       try {
         queryString.append("startkey=").append(JSONUtils.toJsonText(startKey)).append("&");
       } catch (JsonProcessingException e) {
