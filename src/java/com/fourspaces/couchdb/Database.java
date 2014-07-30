@@ -78,6 +78,26 @@ public class Database {
     this.session = session;
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    Database database = (Database) o;
+
+    if (!name.equals(database.name)) return false;
+    if (!session.equals(database.session)) return false;
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = name.hashCode();
+    result = 31 * result + session.hashCode();
+    return result;
+  }
+
   /**
    * The name of the database
    *
@@ -386,6 +406,19 @@ public class Database {
     CouchResponse resp;
     try {
       resp = session.delete(name + "/" + urlEncodePath(d.getId()) + "?rev=" + d.getRev());
+    } catch (SessionException | IOException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+    if (!resp.isOk()) {
+      // Document was probably not deleted?
+      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
+    }
+  }
+
+  public void deleteDocument(String id, String rev) throws DatabaseException {
+    CouchResponse resp;
+    try {
+      resp = session.delete(name + "/" + urlEncodePath(id) + "?rev=" + rev);
     } catch (SessionException | IOException e) {
       throw new DatabaseException("Database operation failed", e);
     }

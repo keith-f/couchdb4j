@@ -155,6 +155,32 @@ public class Session implements AutoCloseable {
     this(hostname, port, null, null, useHttps);
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    Session session = (Session) o;
+
+    if (port != session.port) return false;
+    if (useHttps != session.useHttps) return false;
+    if (!hostname.equals(session.hostname)) return false;
+    if (password != null ? !password.equals(session.password) : session.password != null) return false;
+    if (username != null ? !username.equals(session.username) : session.username != null) return false;
+
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = hostname.hashCode();
+    result = 31 * result + port;
+    result = 31 * result + (username != null ? username.hashCode() : 0);
+    result = 31 * result + (password != null ? password.hashCode() : 0);
+    result = 31 * result + (useHttps ? 1 : 0);
+    return result;
+  }
+
   /**
    * Read-only
    *
