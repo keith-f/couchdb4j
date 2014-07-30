@@ -184,8 +184,10 @@ public class Database {
     }
 
     CouchResponse resp;
+    String queryString;
     try {
-      resp = session.get(path, viewQuery.getQueryString());
+      queryString = viewQuery.getQueryString();
+      resp = session.get(path, queryString);
     } catch (SessionException e) {
       throw new DatabaseException("Database operation failed", e);
     } catch (ViewQueryCompilationException e) {
@@ -195,6 +197,7 @@ public class Database {
       throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
     }
     ViewResult results = new ViewResult(viewQuery, (ObjectNode) resp.getJsonBody());
+    results.setQueryString(queryString);
     return results;
 
   }
