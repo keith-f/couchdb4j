@@ -243,8 +243,28 @@ public class Session implements AutoCloseable {
    */
   public CouchResponse delete(String path) throws SessionException {
     try {
-      HttpDelete del = new HttpDelete(buildUrl(path));
+      URI uri = buildUrl(path);
+      log.info("Deletion URI: "+uri);
+      HttpDelete del = new HttpDelete(uri);
+      log.info("Delete request: "+del.toString());
       return http(del);
+    } catch (URISyntaxException e) {
+      throw new SessionException("Invalid URI", e);
+    }
+  }
+
+  /**
+   * A delete request with a query string
+   * @param path eg: database/documentid
+   * @param queryString eg '?rev=foo
+   * @return
+   * @throws SessionException
+   */
+  public CouchResponse delete(String path, String queryString) throws SessionException {
+    try {
+      HttpDelete delete = new HttpDelete(buildUrl(path, queryString));
+      log.info("Delete request: "+delete.toString());
+      return http(delete);
     } catch (URISyntaxException e) {
       throw new SessionException("Invalid URI", e);
     }

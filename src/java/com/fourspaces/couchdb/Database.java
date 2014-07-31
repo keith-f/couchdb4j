@@ -194,7 +194,8 @@ public class Database {
       throw new DatabaseException("Failed to create query URL", e);
     }
     if (!resp.isOk()) {
-      throw new DatabaseException("Response received, but was not 'ok'. JSON response was: " + resp.getJsonBody().toString());
+      throw new DatabaseException("Response received, but was not 'ok'. JSON response was: " + resp.getJsonBody().toString()
+          + ". ViewQuery request was: "+viewQuery.toString()+", "+queryString);
     }
     ViewResult results = new ViewResult(viewQuery, (ObjectNode) resp.getJsonBody());
     results.setQueryString(queryString);
@@ -265,7 +266,8 @@ public class Database {
       throw new DatabaseException("Database operation failed", e);
     }
     if (!resp.isOk()) {
-      throw new DatabaseException("Response received, but was not 'ok'. JSON response was: " + resp.getJsonBody().toString());
+      throw new DatabaseException("Response received, but was not 'ok'. JSON response was: " + resp.getJsonBody().toString()
+          + ". Save document request was for: id:"+docId+", doc:"+doc.getContent().toString());
     }
 
     try {
@@ -387,7 +389,8 @@ public class Database {
       // Request succeeded, but no such document. Return NULL
       return null;
     } else if (!resp.isOk()) {
-      throw new DatabaseException("Response received, but was not 'ok'. JSON response was: " + resp.getJsonBody().toString());
+      throw new DatabaseException("Response received, but was not 'ok'. JSON response was: " + resp.getJsonBody().toString()
+          + ". Document request was for: id:"+id+", rev:"+revision+", showRevs:"+showRevisions);
     }
     Document doc = new Document((ObjectNode) resp.getJsonBody());
     return doc;
@@ -401,32 +404,23 @@ public class Database {
    * @throws IllegalArgumentException for blank document id
    */
   public void deleteDocument(Document d) throws DatabaseException {
-    if (StringUtils.isBlank(d.getId())) {
-      throw new IllegalArgumentException("cannot delete document, doc id is empty");
-    }
-
-    CouchResponse resp;
-    try {
-      resp = session.delete(name + "/" + urlEncodePath(d.getId()) + "?rev=" + d.getRev());
-    } catch (SessionException | IOException e) {
-      throw new DatabaseException("Database operation failed", e);
-    }
-    if (!resp.isOk()) {
-      // Document was probably not deleted?
-      throw new DatabaseException("Response received, but was not 'ok': Error: " + resp.getErrorId() + "; Error text: " + resp.getPhrase());
-    }
+    deleteDocument(d.getId(), d.getRev());
   }
 
   public void deleteDocument(String id, String rev) throws DatabaseException {
     CouchResponse resp;
     try {
-      resp = session.delete(name + "/" + urlEncodePath(id) + "?rev=" + rev);
+      //String path = name + "/" + urlEncodePath(id) + "?rev=" + rev;
+      String path = name + "/" + urlEncodePath(id);
+      log.info("Delete path: "+path);
+      resp = session.delete(path, "rev=" + rev);
     } catch (SessionException | IOException e) {
       throw new DatabaseException("Database operation failed", e);
     }
     if (!resp.isOk()) {
       // Document was probably not deleted?
-      throw new DatabaseException("Response received, but was not 'ok'. JSON response was: " + resp.getJsonBody().toString());
+      throw new DatabaseException("Response received, but was not 'ok'. JSON response was: " + resp.getJsonBody().toString()
+          + ". Deletion request was for: id:"+id+", rev:"+rev);
     }
   }
 
@@ -445,7 +439,8 @@ public class Database {
       throw new DatabaseException("Database operation failed", e);
     }
     if (!resp.isOk()) {
-      throw new DatabaseException("Response received, but was not 'ok'. JSON response was: " + resp.getJsonBody().toString());
+      throw new DatabaseException("Response received, but was not 'ok'. JSON response was: " + resp.getJsonBody().toString()
+          + ". Attachment request was for: id:"+id+", attachment:"+attachment);
     }
 
     return resp.getBody();
