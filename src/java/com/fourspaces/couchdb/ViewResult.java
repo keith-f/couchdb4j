@@ -106,6 +106,7 @@ public class ViewResult {
 
 
 	private ViewQuery query;
+  private String queryString; // The query string used to obtain these results
   private ObjectNode result;
 
 	/**
@@ -156,5 +157,13 @@ public class ViewResult {
 
   public void setResult(ObjectNode result) {
     this.result = result;
+  }
+
+  public String getQueryString() {
+    return queryString;
+  }
+
+  public void setQueryString(String queryString) {
+    this.queryString = queryString;
   }
 }
