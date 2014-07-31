@@ -417,9 +417,7 @@ public class Database {
   public void deleteDocument(String id, String rev) throws DatabaseException {
     CouchResponse resp;
     try {
-      //String path = name + "/" + urlEncodePath(id) + "?rev=" + rev;
       String path = name + "/" + urlEncodePath(id);
-      log.info("Delete path: "+path);
       resp = session.delete(path, "rev=" + rev);
     } catch (SessionException | IOException e) {
       throw new DatabaseException("Database operation failed", e);
