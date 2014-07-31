@@ -43,6 +43,9 @@ import static com.fourspaces.couchdb.util.JSONUtils.mapper;
 public class CouchResponse {
   private static final Log log = LogFactory.getLog(CouchResponse.class);
 
+  private final HttpRequestBase request;
+  private final HttpResponse response;
+
   private final String body;
   private final JsonNode jsonBody;
   private final String path;
@@ -63,13 +66,16 @@ public class CouchResponse {
    *
    * @throws IOException
    */
-  CouchResponse(HttpRequestBase req, HttpResponse response) throws IOException {
+  CouchResponse(HttpRequestBase request, HttpResponse response) throws IOException {
+    this.request = request;
+    this.response = response;
+
     headers = response.getAllHeaders();
 
     HttpEntity entity = response.getEntity();
     body = EntityUtils.toString(entity);
 
-    path = req.getURI().getPath();
+    path = request.getURI().getPath();
 
     statusCode = response.getStatusLine().getStatusCode();
     phrase = response.getStatusLine().getReasonPhrase();
@@ -160,5 +166,13 @@ public class CouchResponse {
 
   public String getPhrase() {
     return phrase;
+  }
+
+  public HttpRequestBase getRequest() {
+    return request;
+  }
+
+  public HttpResponse getResponse() {
+    return response;
   }
 }
