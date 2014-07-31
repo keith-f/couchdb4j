@@ -58,7 +58,7 @@ public class Document {
    *
    * This field is entirely optional - CouchDB doesn't use it in any way.
    */
-  public static final String DOC_TYPE = "doctype";
+  public static final String DOC_TYPE = "docType";
 
   protected ObjectNode content;
 
