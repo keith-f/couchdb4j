@@ -31,6 +31,7 @@ import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.*;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
 
@@ -80,8 +81,8 @@ public class Session implements AutoCloseable {
   protected final String password;
   protected final boolean useHttps;
 
-  private final CredentialsProvider credsProvider;
-  private final AuthCache authCache;
+//  private final CredentialsProvider credsProvider;
+//  private final AuthCache authCache;
   private final CloseableHttpClient httpClient; //Docs: http://hc.apache.org/httpcomponents-client-4.3.x/
 
   /**
@@ -101,23 +102,39 @@ public class Session implements AutoCloseable {
     this.password = password;
     this.useHttps = useHttps;
 
-    authCache = new BasicAuthCache();
-    authCache.put(new HttpHost(hostname, port), new BasicScheme());  //Host-specific credentials
-    credsProvider = new BasicCredentialsProvider();
+//    authCache = new BasicAuthCache();
+//    authCache.put(new HttpHost(hostname, port), new BasicScheme());  //Host-specific credentials
+//    credsProvider = new BasicCredentialsProvider();
 
-    if (username != null) {
-      log.info("Username: " + username + ", hostname: " + hostname + ", port: " + port);
-      credsProvider.setCredentials(
-          new AuthScope(hostname, port),
-          new UsernamePasswordCredentials(username, password));    // Default credentials
+    PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
+    // Increase max total connection to 200
+    cm.setMaxTotal(200);
+    // Increase default max connection per route to 20
+    cm.setDefaultMaxPerRoute(20);
+    // Increase max connections for localhost:80 to 50
+//    HttpHost localhost = new HttpHost("locahost", 80);
+//    cm.setMaxPerRoute(new HttpRoute(localhost), 50);
 
-      httpClient = HttpClients.custom()
-          .setDefaultCredentialsProvider(credsProvider)
-          // ... can set things like timeout / username agents here if required ...
-          .build();
-    } else {
-      httpClient = HttpClients.createDefault();
-    }
+    httpClient = HttpClients.custom()
+        //.setDefaultCredentialsProvider(credsProvider)
+        // ... can set things like timeout / username agents here if required ...
+        .setConnectionManager(cm)
+        .build();
+
+//    if (username != null) {
+//      log.info("Username: " + username + ", hostname: " + hostname + ", port: " + port);
+//      credsProvider.setCredentials(
+//          new AuthScope(hostname, port),
+//          new UsernamePasswordCredentials(username, password));    // Default credentials
+//
+//      httpClient = HttpClients.custom()
+//          //.setDefaultCredentialsProvider(credsProvider)
+//          // ... can set things like timeout / username agents here if required ...
+//          .setConnectionManager(cm)
+//          .build();
+//    } else {
+//      httpClient = HttpClients.createDefault();
+//    }
   }
 
   /**
@@ -468,16 +485,21 @@ public class Session implements AutoCloseable {
    * @return the CouchResponse (status / error / json document)
    */
   private CouchResponse http(HttpRequestBase req) throws SessionException {
+    CredentialsProvider cp = new BasicCredentialsProvider();
+    cp.setCredentials(
+        new AuthScope(hostname, port),
+        new UsernamePasswordCredentials(username, password));
+
     // Add AuthCache to the execution context
     final HttpClientContext context = HttpClientContext.create();
-    context.setCredentialsProvider(credsProvider);
-    context.setAuthCache(authCache);
+    context.setCredentialsProvider(cp);
+//    context.setAuthCache(authCache);
     try (CloseableHttpResponse httpResponse = httpClient.execute(req, context)) {
       CouchResponse currentResponse = new CouchResponse(req, httpResponse);
       EntityUtils.consume(httpResponse.getEntity()); //Required to ensure connection is reusable
       return currentResponse;
     } catch (Exception e) {
-      throw new SessionException("HTTP request failed", e);
+      throw new SessionException("HTTP request failed: "+req.toString(), e);
     }
   }
 
