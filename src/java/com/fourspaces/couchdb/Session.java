@@ -485,6 +485,10 @@ public class Session implements AutoCloseable {
    * @return the CouchResponse (status / error / json document)
    */
   private CouchResponse http(HttpRequestBase req) throws SessionException {
+    AuthCache authCache = new BasicAuthCache();
+    authCache.put(new HttpHost(hostname, port), new BasicScheme());  //Host-specific credentials
+
+
     CredentialsProvider cp = new BasicCredentialsProvider();
     cp.setCredentials(
         new AuthScope(hostname, port),
@@ -493,7 +497,7 @@ public class Session implements AutoCloseable {
     // Add AuthCache to the execution context
     final HttpClientContext context = HttpClientContext.create();
     context.setCredentialsProvider(cp);
-//    context.setAuthCache(authCache);
+    context.setAuthCache(authCache);
     try (CloseableHttpResponse httpResponse = httpClient.execute(req, context)) {
       CouchResponse currentResponse = new CouchResponse(req, httpResponse);
       EntityUtils.consume(httpResponse.getEntity()); //Required to ensure connection is reusable
