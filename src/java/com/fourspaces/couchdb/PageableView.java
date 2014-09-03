@@ -18,7 +18,9 @@
 package com.fourspaces.couchdb;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.sun.javafx.scene.control.skin.VirtualFlow;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -30,7 +32,17 @@ import java.util.List;
 public class PageableView implements Iterable<PageableView.Page> {
   private static final int DEFAULT_PAGESIZE = 500;
 
-  public static class Page {
+  /**
+   * Specifies an interface for parsers that consume a domain-specific row from the raw results of a CouchDB view and
+   * convert it into a more meaninful bean type.
+   *
+   * @param <T>
+   */
+  public static interface RawRowParser<T> {
+    public T parseRawRow(ViewResult.Row rawRow);
+  }
+
+  public static class Page<T> {
     private int targetPageSize;              // Intended maximum page size
     private ViewResult rawResult;            // Raw response from the server
     private List<ViewResult.Row> resultRows; // A number of rows, up to the requested page size
@@ -41,6 +53,8 @@ public class PageableView implements Iterable<PageableView.Page> {
 
     private long queryTimeMs;                // Time take to query for, and generate this Page object
 
+    private RawRowParser<T> rawRowParser;    // Optional parser that takes the raw view rows and converts them to beans
+
     public Page() {
     }
 
@@ -48,6 +62,24 @@ public class PageableView implements Iterable<PageableView.Page> {
       this.targetPageSize = targetPageSize;
       this.rawResult = rawResult;
       this.resultRows = resultRows;
+    }
+
+    public Page(int targetPageSize, ViewResult rawResult, List<ViewResult.Row> resultRows, RawRowParser<T> rawRowParser) {
+      this.targetPageSize = targetPageSize;
+      this.rawResult = rawResult;
+      this.resultRows = resultRows;
+      this.rawRowParser = rawRowParser;
+    }
+
+    public List<T> parseRawRows() throws ParserException {
+      if (rawRowParser == null) {
+        throw new ParserException("No parser was specified!");
+      }
+      List<T> parsed = new ArrayList<>(resultRows.size());
+      for (ViewResult.Row row : resultRows) {
+        parsed.add(rawRowParser.parseRawRow(row));
+      }
+      return parsed;
     }
 
     public ViewResult getRawResult() {
@@ -112,6 +144,14 @@ public class PageableView implements Iterable<PageableView.Page> {
 
     public void setQueryTimeMs(long queryTimeMs) {
       this.queryTimeMs = queryTimeMs;
+    }
+
+    public RawRowParser<T> getRawRowParser() {
+      return rawRowParser;
+    }
+
+    public void setRawRowParser(RawRowParser<T> rawRowParser) {
+      this.rawRowParser = rawRowParser;
     }
   }
 

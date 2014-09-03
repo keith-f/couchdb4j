@@ -71,6 +71,8 @@ public class ViewResult {
       this.value = origRow.get(ROW_PROP__VAL);
     }
 
+
+
     public String getId() {
       return id;
     }
