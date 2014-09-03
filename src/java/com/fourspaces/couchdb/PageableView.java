@@ -29,7 +29,7 @@ import java.util.List;
  *
  * @author Keith Flanagan
  */
-public class PageableView implements Iterable<PageableView.Page> {
+public class PageableView<T> implements Iterable<PageableView.Page<T>> {
   private static final int DEFAULT_PAGESIZE = 500;
 
   /**
@@ -174,8 +174,8 @@ public class PageableView implements Iterable<PageableView.Page> {
   }
 
   @Override
-  public Iterator<Page> iterator() {
-    return new Iterator<Page>() {
+  public Iterator<Page<T>> iterator() {
+    return new Iterator<Page<T>>() {
       Page lastPage;
       Page currentPage;
 
@@ -240,7 +240,7 @@ public class PageableView implements Iterable<PageableView.Page> {
       }
 
       @Override
-      public Page next() {
+      public Page<T> next() {
         if (!hasNext()) {
           throw new RuntimeException("No 'next' result page available");
         }
