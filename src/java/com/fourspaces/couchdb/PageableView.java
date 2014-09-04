@@ -39,7 +39,7 @@ public class PageableView<T> implements Iterable<PageableView.Page<T>> {
    * @param <T>
    */
   public static interface RawRowParser<T> {
-    public T parseRawRow(ViewResult.Row rawRow);
+    public T parseRawRow(ViewResult.Row rawRow) throws ParserException;
   }
 
   public static class Page<T> {
@@ -158,28 +158,32 @@ public class PageableView<T> implements Iterable<PageableView.Page<T>> {
   private final Database db;
   private final ViewQuery initialViewQuery;
   private final int pageSize;
+  private final RawRowParser<T> rawRowParser; // Optional
 
 
 
   public PageableView(Database db, ViewQuery initialViewQuery) {
-    this.db = db;
-    this.initialViewQuery = initialViewQuery;
-    this.pageSize = DEFAULT_PAGESIZE;
+    this(db, initialViewQuery, DEFAULT_PAGESIZE);
   }
 
   public PageableView(Database db, ViewQuery initialViewQuery, int pageSize) {
+    this(db, initialViewQuery, pageSize, null);
+  }
+
+  public PageableView(Database db, ViewQuery initialViewQuery, int pageSize, RawRowParser<T> rawRowParser) {
     this.db = db;
     this.initialViewQuery = initialViewQuery;
     this.pageSize = pageSize;
+    this.rawRowParser = rawRowParser;
   }
 
   @Override
   public Iterator<Page<T>> iterator() {
     return new Iterator<Page<T>>() {
-      Page lastPage;
-      Page currentPage;
+      Page<T> lastPage;
+      Page<T> currentPage;
 
-      private Page queryNextPage(Page currentPage) throws DatabaseException {
+      private Page<T> queryNextPage(Page<T> currentPage) throws DatabaseException {
         long startMs = System.currentTimeMillis();
 
         ViewQuery query = new ViewQuery(initialViewQuery);
@@ -199,7 +203,7 @@ public class PageableView<T> implements Iterable<PageableView.Page<T>> {
         List<ViewResult.Row> resultRows = result.convertJsonToRows();
 
 
-        Page page = new Page(pageSize, result, resultRows);
+        Page<T> page = new Page<>(pageSize, result, resultRows, rawRowParser);
         page.setLastPage(result.getNumReturnedRows() < queryLimit);
         if (!resultRows.isEmpty()) {
           ViewResult.Row nextStartRow = resultRows.get(resultRows.size() - 1);
