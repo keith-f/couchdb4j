@@ -45,12 +45,12 @@ import java.util.List;
 
 
 /**
- * The Session is the main connection to the CouchDB instance.  However, you'll only use the Session
- * to obtain a reference to a CouchDB Database.  All of the main work happens at the Database level.
- * <p>
- * It uses the Apache's  HttpClient library for all communication with the server.  This is
- * a little more robust than the standard URLConnection.
- * <p>
+ * A <code>Session</code> is a connection pool that can maintain one or more active connections to a CouchDB
+ * server (uses the Apache commons HTTP client).
+ *
+ * You usually use a <code>Session</code> instance to obtain one or more <code>Database</code> instances, for use
+ * by one or more threads.
+ *
  * Ex usage: <br>
  * Session session = new Session(hostname,port);
  * Database db = session.getDatabase("dbname");
@@ -58,9 +58,15 @@ import java.util.List;
  * Lifecycle notes:
  * <ul>
  *   <li>Create a Session for each database server you wish to interact with</li>
- *   <li>Perform a number of database operations</li>
+ *   <li>Perform a number of database operations with one or more threads</li>
  *   <li>Remember to <code>close</code> the session, which ensures that the underlying HTTP client frees up resources.</li>
  * </ul>
+ *
+ * Note that a <code>Session</code> should <i>only</i> be closed once all threads have completely finished with
+ * their connections. Failure to do so will result in errors such as:
+ * <pre>
+ *   java.lang.IllegalStateException: Connection pool shut down
+ * </pre>
  *
  * @author mbreese
  * @author brennanjubb - HTTP-Auth username/password
@@ -515,6 +521,13 @@ public class Session implements AutoCloseable {
     }
   }
 
+  /**
+   * This close method is provided for convenience and results in the closure of the underlying HTTP connection
+   * pool. Only close the <code>Session</code> once you're sure that it'll never be needed again by any thread
+   * that has a reference to it.
+   *
+   * @throws Exception
+   */
   @Override
   public void close() throws Exception {
     httpClient.close();
