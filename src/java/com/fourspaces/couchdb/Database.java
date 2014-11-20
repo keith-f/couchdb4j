@@ -30,10 +30,15 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
- * This represents a particular database on the CouchDB server
- * <p>
- * Using this content, you can get/create/update/delete documents.
+ * Represents a particular database on the CouchDB server.
+ *
+ * A <code>Document</code> allows you to get/create/update/delete documents.
  * You can also call views (named and adhoc) to query the underlying database.
+ *
+ * <code>Database</code> instances are lightweight objects and, while idle,  no resources are explicitly tied to them.
+ * There is also no need to explicitly 'close' a <code>Document</code>, since the <code>Document</code> obtains HTTP
+ * connections on-demand from a <code>Session</code> connection pool. At the end of a given operation, these connections
+ * are handed back to the pool for possible re-use.
  *
  * @author mbreese
  * @author Keith Flanagan - added exception handling
