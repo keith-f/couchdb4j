@@ -44,6 +44,11 @@ public class ComplexKey {
   public static ComplexKey of(Object... components) {
     return new ComplexKey(components);
   }
+
+  public static ComplexKey of(List<Object> components) {
+    return new ComplexKey(components);
+  }
+
   /**
    * Add this Object to the key if an empty object definition is desired:
    * ["foo",{}]
@@ -63,6 +68,10 @@ public class ComplexKey {
 
   private ComplexKey(Object[] components) {
     this.components = Arrays.asList(components);
+  }
+
+  private ComplexKey(List<Object> components) {
+    this.components = components;
   }
 
   @JsonValue
