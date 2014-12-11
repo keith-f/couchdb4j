@@ -576,6 +576,17 @@ public class Session implements AutoCloseable {
   }
 
   /**
+   * Returns a pointer to a database on a server. This is done without performing any communication with the server.
+   * You will get an error if you attempt to use the <code>Database</code> if it does not exist yet.
+   *
+   * @param name
+   * @return
+   */
+  public Database getDatabaseWithoutMetadata(String name)  {
+    return new Database(name, this);
+  }
+
+  /**
    * Creates a new database (if the name doesn't already exist)
    *
    * @param name
