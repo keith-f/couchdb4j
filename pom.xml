@@ -12,9 +12,9 @@ http://maven.apache.org/maven-v4_0_0.xsd">
 
   <properties>
     <!-- version constants -->
-    <jackson-annotations.version>2.4.1</jackson-annotations.version>
-    <jackson-core.version>2.4.1.1</jackson-core.version>
-    <jackson-databind.version>2.4.1</jackson-databind.version>
+    <jackson-annotations.version>2.5.1</jackson-annotations.version>
+    <jackson-core.version>2.5.1</jackson-core.version>
+    <jackson-databind.version>2.5.1</jackson-databind.version>
 
     <http-client.version>4.3.4</http-client.version>
   </properties>
