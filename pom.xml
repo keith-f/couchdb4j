@@ -31,7 +31,26 @@ http://maven.apache.org/maven-v4_0_0.xsd">
         </configuration>
       </plugin>
     </plugins>
+
+    <extensions>
+      <extension>
+        <groupId>org.apache.maven.wagon</groupId>
+        <artifactId>wagon-ssh-external</artifactId>
+        <version>1.0-beta-6</version>
+      </extension>
+    </extensions>
   </build>
+
+  <distributionManagement>
+    <repository>
+      <id>www.scalesinformatics.com-releases</id>
+      <url>scpexe://www.scalesinformatics.com/var/www/www.scalesinformatics.com/maven/releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>www.scalesinformatics.com-snapshots</id>
+      <url>scpexe://www.scalesinformatics.com/var/www/www.scalesinformatics.com/maven/snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
 
   <dependencies>
     <dependency>
@@ -105,11 +124,4 @@ http://maven.apache.org/maven-v4_0_0.xsd">
     </pluginRepository>
   </pluginRepositories>
 
-  <distributionManagement>
-    <repository>
-      <id>nexus</id>
-      <name>My Nexus</name>
-      <url>http://localhost:8081/nexus/content/repositories/thirdparty/</url>
-    </repository>
-  </distributionManagement>
 </project>
